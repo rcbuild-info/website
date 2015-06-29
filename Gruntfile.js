@@ -43,8 +43,15 @@ module.exports = function(grunt) {
         dest: 'static/js/<%= pkg.name %>.deps.js'
       }
     },
+    cssmin: {
+      target: {
+        files: {
+          'static/css/main.min.css': ['src/css/*.css']
+        }
+      }
+    },
     watch: {
-      files: ['<%= jshint.files %>', 'src/*.jsx'],
+      files: ['<%= jshint.files %>', 'src/jsx/*.jsx', 'src/css/*.css'],
       tasks: ['default']
     }
   });
@@ -57,8 +64,9 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-browserify');
+  grunt.loadNpmTasks('grunt-contrib-cssmin');
 
   // Default task(s).
-  grunt.registerTask('default', ['jshint', 'react', 'concat', 'browserify', 'uglify']);
+  grunt.registerTask('default', ['jshint', 'react', 'concat', 'browserify', 'uglify', 'cssmin']);
 
 };
