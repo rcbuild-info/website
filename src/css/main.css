@@ -119,3 +119,10 @@ a.unknown {
        -o-transition-property: height, visibility;
           transition-property: height, visibility;
 }
+
+.row-eq-height {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+}

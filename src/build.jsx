@@ -7,7 +7,28 @@ var CollapsibleMixin = require('react-bootstrap/lib/CollapsibleMixin');
 var Grid = require('react-bootstrap/lib/Grid');
 var Row = require('react-bootstrap/lib/Row');
 var Col = require('react-bootstrap/lib/Col');
+var Button = require('react-bootstrap/lib/Button');
 var classNames = require('classnames');
+
+var getSite = function(url) {
+  var parser = document.createElement('a');
+  parser.href = url;
+  return parser.hostname.replace("www.", "");
+};
+var PartDetails = React.createClass({
+  render: function() {
+    if (!this.props.partInfo || Object.keys(this.props.partInfo).length == 0) return <div>Unknown part.</div>;
+    var buttons = [];
+    for (var urlClass in this.props.partInfo.urls) {
+      for (var i = 0; i < this.props.partInfo.urls[urlClass].length; i++) {
+        var url = this.props.partInfo.urls[urlClass][i];
+        var site = getSite(url);
+        buttons.push((<a href={url} key={site} className={urlClass}>{site}</a>));
+      }
+    }
+    return (<Grid><Row className="row-eq-height links"><Col className="category" xs={4}></Col><Col xs={8}>{buttons}</Col></Row></Grid>);
+  }
+});
 
 var Part = React.createClass({
   getInitialState: function() {
@@ -57,7 +78,7 @@ var Part = React.createClass({
     if (this.state.partInfo.name) {
       partInfo = (<Col className="part" xs={8}>{this.state.partInfo.manufacturer} {this.state.partInfo.name}</Col>);
     }
-    return (<div><Grid onClick={this.onHandleToggle}><Row><Col className="category" xs={4}>{this.props.model.name}</Col>{partInfo}</Row></Grid><div ref='panel' className={classNames(styles)}>{this.state.partInfo.name}</div></div>);
+    return (<div><Grid onClick={this.onHandleToggle}><Row><Col className="category" xs={4}>{this.props.model.name}</Col>{partInfo}</Row></Grid><div ref='panel' className={classNames(styles)}><PartDetails partInfo={this.state.partInfo}/></div></div>);
   }
 });
 
