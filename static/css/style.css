@@ -1,0 +1,121 @@
+body {
+  font-family: sans-serif;
+}
+
+.part {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.category {
+  background-color: #eeeeee;
+  color: #444444;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+a.unknown {
+  font-size: smaller;
+  text-align: center;
+  text-decoration: none;
+  background-color: #eeeeee;
+  padding-left: 0.3em;
+  padding-right: 0.3em;
+  margin-left: 0.5em;
+  color: #666666;
+}
+
+.SwipeViewsContainer {
+  height: 100%;
+  display: flex;
+  flex-flow: column nowrap;
+  overflow: hidden;
+}
+
+.SwipeViewsHeader {
+  min-height: 40px;
+  border-bottom: #F0F0F0 4px solid;
+  display: flex;
+  flex-flow: row nowrap;
+  flex-basis: 0;
+}
+
+.SwipeViewsTabs {
+  flex: 1;
+  min-height: 100%;
+  display: flex;
+  flex-flow: column nowrap;
+  margin-bottom: -4px;
+}
+
+.SwipeViewsTabs > ul {
+  flex: 1;
+  display: flex;
+  flex-flow: row nowrap;
+  margin: 0;
+  padding: 0;
+}
+
+.SwipeViewsTab {
+  display: inline;
+  padding-top: 15px;
+  flex: 1;
+  text-align: center;
+}
+
+.SwipeViewsTab > a {
+  text-decoration: none;
+  color: black;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.SwipeViewsTabs .active {
+  color: #FF6950;
+}
+
+.SwipeViewsInk {
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in-out;
+  height: 4px;
+  background-color: #FF6950;
+  border-radius: 5px;
+}
+
+.SwipeViews {
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in-out;
+  height: 100%;
+  display: flex;
+  flex-flow: row nowrap;
+  overflow-x: hidden;
+}
+
+.SwipeView {
+  overflow-y: scroll;
+}
+
+/* from jquery */
+.collapse {
+  display: none;
+}
+.collapse.in {
+  display: block;
+}
+.collapsing {
+  position: relative;
+  height: 0;
+  overflow: hidden;
+  -webkit-transition-timing-function: ease;
+       -o-transition-timing-function: ease;
+          transition-timing-function: ease;
+  -webkit-transition-duration: .35s;
+       -o-transition-duration: .35s;
+          transition-duration: .35s;
+  -webkit-transition-property: height, visibility;
+       -o-transition-property: height, visibility;
+          transition-property: height, visibility;
+}
