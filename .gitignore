@@ -6,4 +6,6 @@
 
 node_modules/*
 static/js/
+static/css/
+rcbuild.info.env
 .module-cache/
