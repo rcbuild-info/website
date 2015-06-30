@@ -18,7 +18,7 @@ var classNames = require('classnames');
 var trackOutboundLink = function(url) {
    ga('send', 'event', 'outbound', 'click', url, {'hitCallback':
      function () {
-     document.location = url;
+       document.location = url;
      }
    });
 }
@@ -38,9 +38,9 @@ var PartDetails = React.createClass({
         var site = getSite(url);
         var onClick = function() {
           trackOutboundLink(url);
-          return false;
+          event.preventDefault ? event.preventDefault() : event.returnValue = !1;
         };
-        buttons.push((<li><a href={url} key={site} className={urlClass} onclick={onClick}>{site}</a></li>));
+        buttons.push((<li key={site}><a href={url} className={urlClass} onClick={onClick}>{site}</a></li>));
       }
     }
     return (<Grid><Row className="row-eq-height links"><Col className="category" xs={4}></Col><Col xs={8}><ul>{buttons}</ul></Col></Row></Grid>);
