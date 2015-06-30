@@ -47,6 +47,8 @@ def authorized(oauth_token):
 def token_getter():
   if "o" in session:
     return f.decrypt(session["o"])
+  if "TEST_GITHUB_TOKEN" in os.environ:
+    return os.environ["TEST_GITHUB_TOKEN"]
   return None
 
 def get_github(url, headers):

@@ -27,6 +27,19 @@ a.unknown {
   color: #666666;
 }
 
+.links li + li:before {
+    content: " • ";
+}
+
+.links li {
+  display: inline;
+}
+
+ul {
+    list-style: none outside none;
+    padding-left: 0.5em;
+}
+
 .SwipeViewsContainer {
   height: 100%;
   display: flex;

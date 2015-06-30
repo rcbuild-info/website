@@ -10,6 +10,19 @@ var Col = require('react-bootstrap/lib/Col');
 var Button = require('react-bootstrap/lib/Button');
 var classNames = require('classnames');
 
+/**
+* Function that tracks a click on an outbound link in Google Analytics.
+* This function takes a valid URL string as an argument, and uses that URL string
+* as the event label.
+*/
+var trackOutboundLink = function(url) {
+   ga('send', 'event', 'outbound', 'click', url, {'hitCallback':
+     function () {
+     document.location = url;
+     }
+   });
+}
+
 var getSite = function(url) {
   var parser = document.createElement('a');
   parser.href = url;
@@ -23,10 +36,14 @@ var PartDetails = React.createClass({
       for (var i = 0; i < this.props.partInfo.urls[urlClass].length; i++) {
         var url = this.props.partInfo.urls[urlClass][i];
         var site = getSite(url);
-        buttons.push((<a href={url} key={site} className={urlClass}>{site}</a>));
+        var onClick = function() {
+          trackOutboundLink(url);
+          return false;
+        };
+        buttons.push((<li><a href={url} key={site} className={urlClass} onclick={onClick}>{site}</a></li>));
       }
     }
-    return (<Grid><Row className="row-eq-height links"><Col className="category" xs={4}></Col><Col xs={8}>{buttons}</Col></Row></Grid>);
+    return (<Grid><Row className="row-eq-height links"><Col className="category" xs={4}></Col><Col xs={8}><ul>{buttons}</ul></Col></Row></Grid>);
   }
 });
 

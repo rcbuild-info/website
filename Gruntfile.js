@@ -15,7 +15,7 @@ module.exports = function(grunt) {
     react: {
       files: {
         expand: true,
-        cwd: 'src',
+        cwd: 'src/jsx',
         src: ['**/*.jsx'],
         dest: 'static/js',
         ext: '.js'
