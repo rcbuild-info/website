@@ -1,5 +1,5 @@
 from cryptography.fernet import Fernet
-from flask import Flask, render_template, Response, abort, session, request
+from flask import Flask, render_template, Response, abort, session, request, url_for, flash, redirect
 from flask.ext.github import GitHub
 import os
 
@@ -9,6 +9,8 @@ import requests
 application = app = Flask(__name__)
 app.config['GITHUB_CLIENT_ID'] = os.environ['GITHUB_CLIENT_ID']
 app.config['GITHUB_CLIENT_SECRET'] = os.environ['GITHUB_CLIENT_SECRET']
+app.config['PROPAGATE_EXCEPTIONS'] = True
+app.secret_key = os.environ['SESSION_SECRET_KEY']
 
 FERNET_KEY = os.environ['FERNET_KEY']
 f = Fernet(FERNET_KEY)
@@ -17,7 +19,7 @@ github = GitHub(app)
 
 @app.route('/')
 def index():
-    return 'Hello World!'
+    return 'Hello World2!'
 
 @app.route('/build/<username>/<repo>')
 def build(username, repo):
@@ -25,23 +27,31 @@ def build(username, repo):
 
 @app.route('/login')
 def login():
-    return github.authorize()
+    return github.authorize(redirect_uri="https://rcbuild.info" + url_for('authorized') + "?next=" + request.args.get('next'))
 
 @app.route('/logout')
 def logout():
     session.pop('o', None)
-    return redirect(url_for('index'))
+    r = redirect(request.args.get('next') or url_for('index'))
+    r.set_cookie('u', '', max_age=0, secure=True)
+    return r
 
 @app.route('/github-callback')
 @github.authorized_handler
 def authorized(oauth_token):
+    print("banana")
+    print(app.secret_key)
     next_url = request.args.get('next') or url_for('index')
     if oauth_token is None:
         flash("Authorization failed.")
         return redirect(next_url)
 
-    session["o"] = f.encrypt(oauth_token)
-    return redirect(next_url)
+    print(oauth_token)
+    session.permanent = True
+    session["o"] = f.encrypt(bytes(oauth_token))
+    r = redirect(next_url)
+    r.set_cookie('u', 'tannewt', max_age=31 * 24 * 60, secure=True)
+    return r
 
 @github.access_token_getter
 def token_getter():
@@ -80,6 +90,10 @@ def part_json(manufacturer, name):
 @app.route('/build/<user>/<repo>.json')
 def build_json(user, repo):
     return get_github("repos/" + user + "/" + repo + "/contents/build.json", {"accept": "application/vnd.github.v3.raw"})
+
+@app.route('/build/<user>/<repo>/<filename>')
+def config_json(user, repo, filename):
+    return get_github("repos/" + user + "/" + repo + "/contents/" + filename, {"accept": "application/vnd.github.v3.raw"})
 
 @app.route('/partCategories.json')
 def part_categories():
