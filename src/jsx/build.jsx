@@ -60,7 +60,6 @@ var BuildSettings = React.createClass({
            }, this));
   },
   render: function() {
-    console.log(this.state.cleanflightSettings);
     if (!this.state.cleanflightSettings) return <div></div>;
     var c = this.state.cleanflightSettings;
     var p_roll = c.pid_controller == 2 ? c.p_rollf : c.p_roll;
@@ -196,7 +195,6 @@ var Build = React.createClass({
   componentDidMount: function() {
     request.get('/build/' + this.props.user + "/" + this.props.repo + ".json")
            .end(_.bind(function(err, res){
-             //console.log(err, res);
              if (res.ok && this.isMounted()) {
                 this.setState({
                   buildInfo: JSON.parse(res.text)
@@ -215,7 +213,6 @@ var Build = React.createClass({
   render: function() {
     var parts = [];
     if (this.state.partCategories && this.state.buildInfo) {
-      //console.log(this.state.buildInfo["config"]);
       var partCategories = Object.keys(this.state.buildInfo["config"]);
       partCategories.sort(_.bind(function(a, b) { return this.state.partCategories["categories"][a]["order"] - this.state.partCategories["categories"][b]["order"]; }, this));
       for (var i in partCategories) {

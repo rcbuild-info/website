@@ -2,9 +2,13 @@ from cryptography.fernet import Fernet
 from flask import Flask, render_template, Response, abort, session, request, url_for, flash, redirect
 from flask.ext.github import GitHub
 import os
+import os.path
 
 import base64
 import requests
+import json
+import hmac
+from hashlib import sha1
 
 application = app = Flask(__name__)
 app.config['GITHUB_CLIENT_ID'] = os.environ['GITHUB_CLIENT_ID']
@@ -15,7 +19,91 @@ app.secret_key = os.environ['SESSION_SECRET_KEY']
 FERNET_KEY = os.environ['FERNET_KEY']
 f = Fernet(FERNET_KEY)
 
+from git import Repo
+
 github = GitHub(app)
+
+def CloneOrPull():
+  r = None
+  if not os.path.isdir("parts-repo"):
+    r = Repo.clone_from("https://github.com/tannewt/rcbuild.info-parts.git", "parts-repo")
+  else:
+    r = Repo("parts-repo")
+  fetch_info = r.remote().pull()
+
+PARTS_BY_ID = {}
+SMALL_PARTS_BY_ID = {}
+SMALL_PARTS_BY_CATEGORY = {}
+LINKS = {}
+
+def addPart(dest, manufacturerID, partID, part):
+  if manufacturerID not in dest:
+    dest[manufacturerID] = {}
+  dest[manufacturerID][partID] = part
+
+def updatePartIndexHelper():
+  CloneOrPull()
+  new_parts_by_id = {}
+  new_small_parts_by_id = {}
+  new_small_parts_by_category = {}
+  new_links = {}
+  for dirpath, dirnames, filenames in os.walk("parts-repo"):
+    manufacturerID = dirpath[len("parts-repo/"):]
+    for filename in filenames:
+      if not filename.endswith("json"):
+        continue
+      partID = filename[:-len(".json")]
+      full_path = os.path.join(dirpath, filename)
+      if os.path.islink(full_path):
+        target = os.readlink(full_path)
+        split = target.split("/")
+        m = manufacturerID
+        p = target
+        if len(split) == 2:
+          m, p = split
+        addPart(new_links, manufacturerID, partID, (m, p[:-len(".json")]))
+        continue
+      with open(full_path, "r") as f:
+        part = json.load(f)
+        part["id"] = manufacturerID + "/" + partID
+        small_part = {"manufacturer": part["manufacturer"], "name": part["name"]}
+        if part["category"]:
+          c = part["category"]
+          if c not in new_small_parts_by_category:
+            new_small_parts_by_category[c] = {}
+          addPart(new_small_parts_by_category[c], manufacturerID, partID, small_part)
+        addPart(new_small_parts_by_id, manufacturerID, partID, small_part)
+        addPart(new_parts_by_id, manufacturerID, partID, part)
+  global SMALL_PARTS_BY_CATEGORY
+  global SMALL_PARTS_BY_ID
+  global PARTS_BY_ID
+  global LINKS
+  SMALL_PARTS_BY_CATEGORY = new_small_parts_by_category
+  SMALL_PARTS_BY_ID = new_small_parts_by_id
+  PARTS_BY_ID = new_parts_by_id
+  LINKS = new_links
+
+@app.route('/update/partIndex', methods=["GET", "HEAD", "OPTIONS", "POST"])
+def updatePartIndex():
+  # Don't update if we can't validate the requester.
+  if request.method == "GET":
+    github_response = github.request("GET", "user")
+    if github_response["id"] != 52649:
+      abort(403)
+  elif request.method == "POST":
+    h = hmac.new(os.environ['GITHUB_PART_HOOK_HMAC'], request.data, sha1)
+    if not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+      abort(403)
+  updatePartIndexHelper()
+  return 'ok'
+
+@app.route('/partIndex/by/<by>')
+def partIndex(by):
+  if by == "category":
+    return json.dumps(SMALL_PARTS_BY_CATEGORY)
+  elif by == "id":
+    return json.dumps(SMALL_PARTS_BY_ID)
+  abort(404)
 
 @app.route('/')
 def index():
@@ -39,14 +127,11 @@ def logout():
 @app.route('/github-callback')
 @github.authorized_handler
 def authorized(oauth_token):
-    print("banana")
-    print(app.secret_key)
     next_url = request.args.get('next') or url_for('index')
     if oauth_token is None:
         flash("Authorization failed.")
         return redirect(next_url)
 
-    print(oauth_token)
     session.permanent = True
     session["o"] = f.encrypt(bytes(oauth_token))
     r = redirect(next_url)
@@ -85,7 +170,11 @@ def get_github(url, headers):
 
 @app.route('/part/<manufacturer>/<name>.json')
 def part_json(manufacturer, name):
-    return get_github("repos/tannewt/rcbuild.info-parts/contents/" + manufacturer + "/" + name + ".json", {"accept": "application/vnd.github.v3.raw"})
+  if manufacturer in LINKS and name in LINKS[manufacturer]:
+    return redirect('/part/' + "/".join(LINKS[manufacturer][name]) + ".json")
+  if manufacturer in PARTS_BY_ID and name in PARTS_BY_ID[manufacturer]:
+    return json.dumps(PARTS_BY_ID[manufacturer][name])
+  abort(404)
 
 @app.route('/build/<user>/<repo>.json')
 def build_json(user, repo):
@@ -99,6 +188,7 @@ def config_json(user, repo, filename):
 def part_categories():
     return get_github("repos/tannewt/rcbuild.info-part-skeleton/contents/partCategories.json", {"accept": "application/vnd.github.v3.raw"})
 
+updatePartIndexHelper()
 if __name__ == '__main__':
-    #application.run(debug = True)
-    application.run(host='0.0.0.0')
+    application.run(debug = True)
+    #application.run(host='0.0.0.0')
