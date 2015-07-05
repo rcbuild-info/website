@@ -8,7 +8,7 @@ module.exports = function(grunt) {
         banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n',
         sourceMap: true,
         sourceMapIn: 'static/js/<%= pkg.name %>.deps.js.map',
-        mangle: false
+        mangle: true
       },
       build: {
         src: '<%= browserify.main.dest %>',

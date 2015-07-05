@@ -177,7 +177,7 @@ var Part = React.createClass({
     if (this.state.unknown) {
       unknown = (<a href="https://github.com/tannewt/rcbuild.info-part-skeleton" title="This part is unknown. Click for more information on how to add it." target="_blank" className="unknown">?</a>);
     }
-    var partInfo = (<Col xs={8}>{this.props.id}{unknown}</Col>);
+    var partInfo = (<Col className="part" xs={8}>{this.props.id}{unknown}</Col>);
     if (this.state.partInfo.name) {
       partInfo = (<Col className="part" xs={8}>{this.state.partInfo.manufacturer} {this.state.partInfo.name}</Col>);
     }

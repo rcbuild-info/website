@@ -16,6 +16,7 @@ body {
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .category {
@@ -24,6 +25,7 @@ body {
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 a.unknown {
@@ -81,4 +83,8 @@ ul {
   display: -webkit-flex;
   display: -ms-flexbox;
   display: flex;
+}
+
+.SwipeViewsTab {
+  cursor: pointer;
 }
