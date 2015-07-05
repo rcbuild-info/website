@@ -5,7 +5,10 @@ module.exports = function(grunt) {
     pkg: grunt.file.readJSON('package.json'),
     uglify: {
       options: {
-        banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n'
+        banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n',
+        sourceMap: true,
+        sourceMapIn: 'static/js/<%= pkg.name %>.deps.js.map',
+        mangle: false
       },
       build: {
         src: '<%= browserify.main.dest %>',
@@ -38,15 +41,32 @@ module.exports = function(grunt) {
       files: ['gruntfile.js', 'src/**/*.js', 'test/**/*.js']
     },
     browserify: {
+      options: {
+        browserifyOptions: {
+          debug: true
+        }
+      },
       main: {
         src: 'static/js/<%= pkg.name %>.js',
         dest: 'static/js/<%= pkg.name %>.deps.js'
       }
     },
+    exorcise: {
+      bundle: {
+        options: {},
+        files: {
+          'static/js/<%= pkg.name %>.deps.js.map': ['static/js/<%= pkg.name %>.deps.js'],
+        }
+      }
+    },
     cssmin: {
+      options: {
+        sourceMap: true
+      },
       target: {
         files: {
-          'static/css/main.min.css': ['src/css/*.css']
+          'static/css/main.min.css': ['src/css/*.css',
+                                      'node_modules/react-swipe-views/lib/react-swipe-views.css']
         }
       }
     },
@@ -65,8 +85,9 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-browserify');
   grunt.loadNpmTasks('grunt-contrib-cssmin');
+  grunt.loadNpmTasks('grunt-exorcise');
 
   // Default task(s).
-  grunt.registerTask('default', ['jshint', 'react', 'concat', 'browserify', 'uglify', 'cssmin']);
+  grunt.registerTask('default', ['jshint', 'react', 'concat', 'browserify', 'exorcise', 'uglify', 'cssmin']);
 
 };

@@ -15,6 +15,7 @@ var CollapsibleNav = require('react-bootstrap/lib/CollapsibleNav');
 var Nav = require('react-bootstrap/lib/Nav');
 var NavItem = require('react-bootstrap/lib/NavItem');
 var classNames = require('classnames');
+require("babel-core/polyfill"); /* for Number.isInteger() */
 
 /**
 * Function that tracks a click on an outbound link in Google Analytics.
@@ -85,7 +86,7 @@ var BuildSettings = React.createClass({
         </tbody>
       </Table>
       </div>;
-    var rates = 
+    var rates =
       <Grid fill>
         <Row><Col xs={4}>Roll</Col><Col xs={8}>{c.roll_rate}</Col></Row>
         <Row><Col xs={4}>Pitch</Col><Col xs={8}>{c.pitch_rate}</Col></Row>
@@ -93,7 +94,7 @@ var BuildSettings = React.createClass({
         <Row><Col xs={4}>TPA</Col><Col xs={8}>{c.tpa_rate}</Col></Row>
         <Row><Col xs={4}>TPA Breakpoint</Col><Col xs={8}>{c.tpa_breakpoint}</Col></Row>
       </Grid>;
-    var filter = 
+    var filter =
       <Grid fill>
         <Row><Col xs={4}>gyro_lpf</Col><Col xs={8}>{c.gyro_lpf}</Col></Row>
         <Row><Col xs={4}>dterm_cut_hz</Col><Col xs={8}>{c.dterm_cut_hz}</Col></Row>
@@ -233,7 +234,7 @@ if (Cookies.get("u")) {
   login = <NavItem eventKey={2} href={'/logout?next=' + window.location.href}>Logout</NavItem>;
 }
 React.render(
-  <div>
+  <div id="appContainer">
     <Navbar brand={logo} toggleNavKey={0}>
       <CollapsibleNav eventKey={0}> {/* This is the eventKey referenced */}
         <Nav navbar right>
