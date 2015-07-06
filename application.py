@@ -97,7 +97,7 @@ def updatePartIndex():
   updatePartIndexHelper()
   return 'ok'
 
-@app.route('/partIndex/by/<by>')
+@app.route('/partIndex/by/<by>.json')
 def partIndex(by):
   if by == "category":
     return json.dumps(SMALL_PARTS_BY_CATEGORY)
@@ -105,13 +105,17 @@ def partIndex(by):
     return json.dumps(SMALL_PARTS_BY_ID)
   abort(404)
 
+@app.route('/parts/<classification>')
+def parts(classification):
+    return render_template('main.html')
+
 @app.route('/')
 def index():
     return 'Hello World2!'
 
 @app.route('/build/<username>/<repo>')
 def build(username, repo):
-    return render_template('build.html')
+    return render_template('main.html')
 
 @app.route('/login')
 def login():

@@ -8,7 +8,8 @@ module.exports = function(grunt) {
         banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n',
         sourceMap: true,
         sourceMapIn: 'static/js/<%= pkg.name %>.deps.js.map',
-        mangle: true
+        mangle: true,
+        beautify: false
       },
       build: {
         src: '<%= browserify.main.dest %>',
@@ -31,7 +32,7 @@ module.exports = function(grunt) {
       },
       dist: {
         // the files to concatenate
-        src: ['static/js/build.js'],
+        src: ['static/js/main.js'],
         // the location of the resulting JS file
         dest: 'static/js/<%= pkg.name %>.js'
       }

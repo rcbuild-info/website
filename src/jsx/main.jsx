@@ -177,11 +177,141 @@ var Part = React.createClass({
     if (this.state.unknown) {
       unknown = (<a href="https://github.com/tannewt/rcbuild.info-part-skeleton" title="This part is unknown. Click for more information on how to add it." target="_blank" className="unknown">?</a>);
     }
-    var partInfo = (<Col className="part" xs={8}>{this.props.id}{unknown}</Col>);
+    var partInfo = (<Col className="name" xs={8}>{this.props.id}{unknown}</Col>);
     if (this.state.partInfo.name) {
-      partInfo = (<Col className="part" xs={8}>{this.state.partInfo.manufacturer} {this.state.partInfo.name}</Col>);
+      partInfo = (<Col className="name" xs={8}>{this.state.partInfo.manufacturer} {this.state.partInfo.name}</Col>);
     }
-    return (<div><Grid onClick={this.onHandleToggle}><Row><Col className="category" xs={4}>{this.props.model.name}</Col>{partInfo}</Row></Grid><div ref='panel' className={classNames(styles)}><PartDetails partInfo={this.state.partInfo}/></div></div>);
+    return (<div className="part"><Grid onClick={this.onHandleToggle}><Row><Col className="category" xs={4}>{this.props.model.name}</Col>{partInfo}</Row></Grid><div ref='panel' className={classNames(styles)}><PartDetails partInfo={this.state.partInfo}/></div></div>);
+  }
+});
+
+var sortManufacturerIDs = function(a, b) {
+  var aUnknown = a.startsWith("UnknownManufacturer");
+  var bUnknown = b.startsWith("UnknownManufacturer");
+  if ((aUnknown && bUnknown) || (!aUnknown && !bUnknown)) {
+    if (a == b) {
+      return 0;
+    } else if (a < b) {
+      return -1;
+    } else {
+      return 1;
+    }
+  } else if (aUnknown) {
+    return 1;
+  } else if (bUnknown) {
+    return -1;
+  }
+}
+
+var PartList = React.createClass({
+  render: function() {
+    var parts = [];
+    if (this.props.parts) {
+      console.log(this.props.parts);
+      var manufacturerIDs = Object.keys(this.props.parts);
+      manufacturerIDs.sort(sortManufacturerIDs);
+      for (var i in manufacturerIDs) {
+        var manufacturerID = manufacturerIDs[i];
+        var partIDs = Object.keys(this.props.parts[manufacturerID]);
+        partIDs.sort();
+        for (var i in partIDs) {
+          var partID = partIDs[i];
+          var part = this.props.parts[manufacturerID][partID];
+          var name;
+          if (!manufacturerID.startsWith("UnknownManufacturer")) {
+            name = part.manufacturer + " " + part.name
+          } else {
+            name = part.name;
+          }
+          parts.push(
+            (
+              <tr key={manufacturerID + "/" + partID}>
+                <td>{manufacturerID}/{partID}</td>
+                <td>{ name }</td>
+              </tr>
+            ));
+        }
+      }
+    }
+    return <Table>
+             <thead>
+               <tr>
+                 <th>ID</th><th>Name</th>
+               </tr>
+             </thead>
+             <tbody>
+               {parts}
+             </tbody>
+           </Table>;
+  }
+});
+
+var SupportedParts = React.createClass({
+  getInitialState: function() {
+    return {
+      partCategories: null,
+      parts: null
+    };
+  },
+
+  componentDidMount: function() {
+    request.get('/partIndex/by/category.json')
+           .end(_.bind(function(err, res){
+             if (res.ok && this.isMounted()) {
+                this.setState({
+                  parts: JSON.parse(res.text)
+                });
+              }
+           }, this));
+    request.get('/partCategories.json')
+           .end(_.bind(function(err, res){
+             if (res.ok && this.isMounted()) {
+                this.setState({
+                  partCategories: JSON.parse(res.text)
+                });
+            }
+           }, this));
+  },
+  render: function() {
+    if (!this.state.parts || !this.state.partCategories) {
+      return <div/>;
+    }
+    var categories = [];
+    var partCategories = Object.keys(this.state.partCategories["categories"]);
+    partCategories.sort(_.bind(function(a, b) { return this.state.partCategories["categories"][a]["order"] - this.state.partCategories["categories"][b]["order"]; }, this));
+    for (var i in partCategories) {
+      var category = partCategories[i];
+      categories.push(
+        (<Panel header={this.state.partCategories["categories"][category]["name"] + " (" + category + ")"} key={category}>
+           <PartList parts={this.state.parts[category]} fill/>
+         </Panel>));
+    }
+    return <div>{ categories }</div>;
+  }
+});
+
+var AllParts = React.createClass({
+  getInitialState: function() {
+    return {
+      parts: null
+    };
+  },
+
+  componentDidMount: function() {
+    request.get('/partIndex/by/id.json')
+           .end(_.bind(function(err, res){
+             if (res.ok && this.isMounted()) {
+                this.setState({
+                  parts: JSON.parse(res.text)
+                });
+            }
+           }, this));
+  },
+  render: function() {
+    if (this.state.parts) {
+      return <PartList parts={this.state.parts}/>
+    }
+    return <div/>;
   }
 });
 
@@ -226,8 +356,27 @@ var Build = React.createClass({
 });
 
 var urlparts = window.location.pathname.split("/");
-var user = urlparts[2];
-var repo = urlparts[3];
+var base = urlparts[1];
+var content;
+if (base == "build") {
+  var user = urlparts[2];
+  var repo = urlparts[3];
+  content = <SwipeViews>
+              <div title="Build">
+                <Build user={user} repo={repo}/>
+              </div>
+              <div title="PIDs">
+                <BuildSettings user={user} repo={repo}/>
+              </div>
+            </SwipeViews>;
+} else if (base == "parts") {
+  var classification = urlparts[2];
+  if (classification == "supported") {
+    content = <SupportedParts/>;
+  } else if (classification == "all") {
+    content = <AllParts/>;
+  }
+}
 var logo = <img src="/static/logo.svg"/>;
 var login = <NavItem eventKey={2} href={'/login?next=' + window.location.href}>Login with GitHub</NavItem>;
 if (Cookies.get("u")) {
@@ -243,14 +392,7 @@ React.render(
         </Nav>
       </CollapsibleNav>
     </Navbar>
-    <SwipeViews>
-          <div title="Build">
-            <Build user={user} repo={repo}/>
-          </div>
-          <div title="PIDs">
-            <BuildSettings user={user} repo={repo}/>
-          </div>
-    </SwipeViews>
+    { content }
   </div>,
   document.body
 );
