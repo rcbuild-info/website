@@ -14,6 +14,8 @@ var Navbar = require('react-bootstrap/lib/Navbar');
 var CollapsibleNav = require('react-bootstrap/lib/CollapsibleNav');
 var Nav = require('react-bootstrap/lib/Nav');
 var NavItem = require('react-bootstrap/lib/NavItem');
+var Jumbotron = require('react-bootstrap/lib/Jumbotron');
+var Button = require('react-bootstrap/lib/Button');
 var classNames = require('classnames');
 require("babel-core/polyfill"); /* for Number.isInteger() */
 
@@ -358,6 +360,7 @@ var Build = React.createClass({
 var urlparts = window.location.pathname.split("/");
 var base = urlparts[1];
 var content;
+var github;
 if (base == "build") {
   var user = urlparts[2];
   var repo = urlparts[3];
@@ -369,6 +372,7 @@ if (base == "build") {
                 <BuildSettings user={user} repo={repo}/>
               </div>
             </SwipeViews>;
+  github = 'https://github.com/' + user + '/' + repo;
 } else if (base == "parts") {
   var classification = urlparts[2];
   if (classification == "supported") {
@@ -376,23 +380,47 @@ if (base == "build") {
   } else if (classification == "all") {
     content = <AllParts/>;
   }
+  github = 'https://github.com/tannewt/rcbuild.info-parts';
+} else if (base === "") {
+  content =
+    <Grid>
+      <Row>
+        <Col xs={12}>
+          <Jumbotron>
+            <h1>Welcome!</h1>
+            <p>Find a build and PIDs to make the best flying multirotor you've ever had. Or, start with a build you already have and find the best PIDs.</p>
+            <p><Button bsStyle='primary'>Find Build</Button> <Button bsStyle='primary'>Existing Build</Button></p>
+          </Jumbotron>
+        </Col>
+      </Row>
+    </Grid>;
+  github = 'https://github.com/tannewt/rcbuild.info';
 }
-var logo = <img src="/static/logo.svg"/>;
+var logo = <a href="/"><img src="/static/logo.svg"/></a>;
 var login = <NavItem eventKey={2} href={'/login?next=' + window.location.href}>Login with GitHub</NavItem>;
 if (Cookies.get("u")) {
   login = <NavItem eventKey={2} href={'/logout?next=' + window.location.href}>Logout</NavItem>;
 }
+
 React.render(
   <div id="appContainer">
     <Navbar brand={logo} toggleNavKey={0}>
       <CollapsibleNav eventKey={0}> {/* This is the eventKey referenced */}
         <Nav navbar right>
-          <NavItem eventKey={1} href={'https://github.com/' + user + '/' + repo}>View on GitHub</NavItem>
+          <NavItem eventKey={1} href={github}>View on GitHub</NavItem>
           {login}
         </Nav>
       </CollapsibleNav>
     </Navbar>
     { content }
+    <hr/>
+    <Grid>
+      <Row>
+        <Col xs={12}>
+          <div className="footer">Disclaimer</div>
+        </Col>
+      </Row>
+    </Grid>
   </div>,
   document.body
 );

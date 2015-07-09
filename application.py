@@ -8,6 +8,7 @@ import base64
 import requests
 import json
 import hmac
+import urlparse
 from hashlib import sha1
 
 application = app = Flask(__name__)
@@ -111,7 +112,7 @@ def parts(classification):
 
 @app.route('/')
 def index():
-    return 'Hello World2!'
+    return render_template('main.html')
 
 @app.route('/build/<username>/<repo>')
 def build(username, repo):
@@ -175,7 +176,10 @@ def get_github(url, headers):
 @app.route('/part/<manufacturer>/<name>.json')
 def part_json(manufacturer, name):
   if manufacturer in LINKS and name in LINKS[manufacturer]:
-    return redirect('/part/' + "/".join(LINKS[manufacturer][name]) + ".json")
+    url = '/part/' + "/".join(LINKS[manufacturer][name]) + ".json"
+    if not application.debug:
+      url = urlparse.urljoin("https://rcbuild.info", url)
+    return redirect(url)
   if manufacturer in PARTS_BY_ID and name in PARTS_BY_ID[manufacturer]:
     return json.dumps(PARTS_BY_ID[manufacturer][name])
   abort(404)
