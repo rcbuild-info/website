@@ -61,6 +61,20 @@ ul {
   height: 100%;
 }
 
+.build-card .row, .part .row {
+  margin-left: 0px;
+  margin-right: 0px;
+}
+
+.build-card .col-xs-8, .build-card .col-xs-4 {
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
+.footer {
+  color: #888888;
+}
+
 /* from bootstrap */
 .collapse {
   display: none;

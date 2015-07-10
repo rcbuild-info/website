@@ -111,6 +111,10 @@ def parts(classification):
     return render_template('main.html')
 
 @app.route('/')
+def builds():
+    return render_template('main.html')
+
+@app.route('/builds')
 def index():
     return render_template('main.html')
 

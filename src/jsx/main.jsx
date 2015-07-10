@@ -3,7 +3,6 @@ var request = require('superagent');
 var _ = require('underscore');
 var React = require('react');
 var Cookies = require('js-cookie');
-var SwipeViews = require('react-swipe-views');
 var CollapsibleMixin = require('react-bootstrap/lib/CollapsibleMixin');
 var Grid = require('react-bootstrap/lib/Grid');
 var Row = require('react-bootstrap/lib/Row');
@@ -76,7 +75,7 @@ var BuildSettings = React.createClass({
     var d_yaw = c.pid_controller == 2 ? c.d_yawf : c.d_yaw;
     var corePID =
       <div fill>
-      <Grid><Row><Col xs={4}>PID Controller</Col><Col xs={8}>{c.pid_controller}</Col></Row></Grid>
+      <Row><Col xs={4}>PID Controller</Col><Col xs={8}>{c.pid_controller}</Col></Row>
       <Table condensed striped>
         <thead>
           <tr><th></th><th>Proportional</th><th>Integral</th><th>Derivative</th></tr>
@@ -89,20 +88,16 @@ var BuildSettings = React.createClass({
       </Table>
       </div>;
     var rates =
-      <Grid fill>
-        <Row><Col xs={4}>Roll</Col><Col xs={8}>{c.roll_rate}</Col></Row>
-        <Row><Col xs={4}>Pitch</Col><Col xs={8}>{c.pitch_rate}</Col></Row>
-        <Row><Col xs={4}>Yaw</Col><Col xs={8}>{c.yaw_rate}</Col></Row>
-        <Row><Col xs={4}>TPA</Col><Col xs={8}>{c.tpa_rate}</Col></Row>
-        <Row><Col xs={4}>TPA Breakpoint</Col><Col xs={8}>{c.tpa_breakpoint}</Col></Row>
-      </Grid>;
+        [<Row key='roll_rate'><Col xs={4}>Roll</Col><Col xs={8}>{c.roll_rate}</Col></Row>,
+         <Row key='pitch_rate'><Col xs={4}>Pitch</Col><Col xs={8}>{c.pitch_rate}</Col></Row>,
+         <Row key='yaw_rate'><Col xs={4}>Yaw</Col><Col xs={8}>{c.yaw_rate}</Col></Row>,
+         <Row key='tpa_rate'><Col xs={4}>TPA</Col><Col xs={8}>{c.tpa_rate}</Col></Row>,
+         <Row key='tpa_breakpoint'><Col xs={4}>TPA Breakpoint</Col><Col xs={8}>{c.tpa_breakpoint}</Col></Row>];
     var filter =
-      <Grid fill>
-        <Row><Col xs={4}>gyro_lpf</Col><Col xs={8}>{c.gyro_lpf}</Col></Row>
-        <Row><Col xs={4}>dterm_cut_hz</Col><Col xs={8}>{c.dterm_cut_hz}</Col></Row>
-        <Row><Col xs={4}>pterm_cut_hz</Col><Col xs={8}>{c.pterm_cut_hz}</Col></Row>
-        <Row><Col xs={4}>gyro_cut_hz</Col><Col xs={8}>{c.gyro_cut_hz}</Col></Row>
-      </Grid>;
+        [<Row key='gyro_lpf'><Col xs={4}>gyro_lpf</Col><Col xs={8}>{c.gyro_lpf}</Col></Row>,
+         <Row key='dterm_cut_hz'><Col xs={4}>dterm_cut_hz</Col><Col xs={8}>{c.dterm_cut_hz}</Col></Row>,
+         <Row key='pterm_cut_hz'><Col xs={4}>pterm_cut_hz</Col><Col xs={8}>{c.pterm_cut_hz}</Col></Row>,
+         <Row key='gyro_cut_hz'><Col xs={4}>gyro_cut_hz</Col><Col xs={8}>{c.gyro_cut_hz}</Col></Row>];
     return (<div>
               <Panel header='Core'>{corePID}</Panel>
               <Panel header='Rates'>{rates}</Panel>
@@ -128,10 +123,10 @@ var PartDetails = React.createClass({
           trackOutboundLink(url);
           event.preventDefault ? event.preventDefault() : event.returnValue = !1;
         };
-        buttons.push((<li key={site}><a href={url} className={urlClass} onClick={onClick}>{site}</a></li>));
+        buttons.push((<li key={url}><a href={url} className={urlClass} onClick={onClick}>{site}</a></li>));
       }
     }
-    return (<Grid><Row className="row-eq-height links"><Col className="category" xs={4}></Col><Col xs={8}><ul>{buttons}</ul></Col></Row></Grid>);
+    return (<Row className="row-eq-height links"><Col className="category" xs={4}></Col><Col xs={8}><ul>{buttons}</ul></Col></Row>);
   }
 });
 
@@ -183,7 +178,7 @@ var Part = React.createClass({
     if (this.state.partInfo.name) {
       partInfo = (<Col className="name" xs={8}>{this.state.partInfo.manufacturer} {this.state.partInfo.name}</Col>);
     }
-    return (<div className="part"><Grid onClick={this.onHandleToggle}><Row><Col className="category" xs={4}>{this.props.model.name}</Col>{partInfo}</Row></Grid><div ref='panel' className={classNames(styles)}><PartDetails partInfo={this.state.partInfo}/></div></div>);
+    return (<div className="part"><Row onClick={this.onHandleToggle}><Col className="category" xs={4}>{this.props.model.name}</Col>{partInfo}</Row><div ref='panel' className={classNames(styles)}><PartDetails partInfo={this.state.partInfo}/></div></div>);
   }
 });
 
@@ -204,6 +199,34 @@ var sortManufacturerIDs = function(a, b) {
     return -1;
   }
 }
+
+var BuildCard = React.createClass({
+  render: function() {
+    var header = <h1><a href={ "/build/" + this.props.id}>{this.props.id}</a></h1>;
+    return <Panel header={header} className="build-card">
+        <Row className="row-eq-height" fill>
+          <Col xs={8}>
+            <div className='embed-responsive embed-responsive-16by9'><iframe className='embed-responsive-item' src="https://www.youtube.com/embed/-t-pb3jMmbk?controls=0&rel=0&showinfo=0"/></div>
+          </Col>
+          <Col xs={4}>
+            <div className='embed-responsive embed-responsive-16by9'><iframe className='embed-responsive-item' src="https://www.youtube.com/embed/DsrK2Y6CjhY?controls=0&rel=0&showinfo=0"/></div>
+            <div className='blackbox'></div>
+          </Col>
+        </Row>
+      </Panel>;
+  }
+});
+
+var BuildList = React.createClass({
+  render: function() {
+    var buildIds = ["tannewt/Blackout", "kvanvranken/QAV250"];
+    var builds = [];
+    for (var i in buildIds) {
+      builds.push((<BuildCard id={ buildIds[i] } key={ buildIds[i] }/>))
+    }
+    return <div>{builds}</div>;
+  }
+});
 
 var PartList = React.createClass({
   render: function() {
@@ -364,14 +387,18 @@ var github;
 if (base == "build") {
   var user = urlparts[2];
   var repo = urlparts[3];
-  content = <SwipeViews>
-              <div title="Build">
-                <Build user={user} repo={repo}/>
-              </div>
-              <div title="PIDs">
-                <BuildSettings user={user} repo={repo}/>
-              </div>
-            </SwipeViews>;
+  content = <Row>
+              <Col md={6}>
+                <Panel header="Build">
+                  <Build user={user} repo={repo} fill/>
+                </Panel>
+              </Col>
+              <Col md={6}>
+                <Panel header="PIDs">
+                  <BuildSettings user={user} repo={repo} fill/>
+                </Panel>
+              </Col>
+            </Row>;
   github = 'https://github.com/' + user + '/' + repo;
 } else if (base == "parts") {
   var classification = urlparts[2];
@@ -381,19 +408,16 @@ if (base == "build") {
     content = <AllParts/>;
   }
   github = 'https://github.com/tannewt/rcbuild.info-parts';
+} else if (base == "builds") {
+  content = <BuildList/>;
+  github = 'https://github.com/tannewt/rcbuild.info';
 } else if (base === "") {
   content =
-    <Grid>
-      <Row>
-        <Col xs={12}>
           <Jumbotron>
             <h1>Welcome!</h1>
             <p>Find a build and PIDs to make the best flying multirotor you've ever had. Or, start with a build you already have and find the best PIDs.</p>
-            <p><Button bsStyle='primary'>Find Build</Button> <Button bsStyle='primary'>Existing Build</Button></p>
+            <p><Button bsStyle='primary' href="/builds">Find Build</Button> <Button bsStyle='primary'>Existing Build</Button></p>
           </Jumbotron>
-        </Col>
-      </Row>
-    </Grid>;
   github = 'https://github.com/tannewt/rcbuild.info';
 }
 var logo = <a href="/"><img src="/static/logo.svg"/></a>;
@@ -412,12 +436,16 @@ React.render(
         </Nav>
       </CollapsibleNav>
     </Navbar>
-    { content }
-    <hr/>
     <Grid>
       <Row>
         <Col xs={12}>
-          <div className="footer">Disclaimer</div>
+          { content }
+        </Col>
+      </Row>
+      <hr/>
+      <Row>
+        <Col xs={12}>
+          <div className="footer">RCBuild.Info is a participant in the Amazon Services LLC Associates Program, an affiliate advertising program designed to provide a means for sites to earn advertising fees by advertising and linking to amazon.com.</div>
         </Col>
       </Row>
     </Grid>
