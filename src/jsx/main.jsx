@@ -95,10 +95,10 @@ var BuildSettings = React.createClass({
     var rates =
       <Table condensed striped>
         <tbody>
-          <tr><td>Roll</td><td>{c.roll_rate}</td></tr>
-          <tr><td>Pitch</td><td>{c.pitch_rate}</td></tr>
-          <tr><td>Yaw</td><td>{c.yaw_rate}</td></tr>
-          <tr><td>TPA</td><td>{c.tpa_rate}</td></tr>
+          <tr><td>Roll</td><td>{c.roll_rate / 100.}</td></tr>
+          <tr><td>Pitch</td><td>{c.pitch_rate / 100.}</td></tr>
+          <tr><td>Yaw</td><td>{c.yaw_rate / 100.}</td></tr>
+          <tr><td>TPA</td><td>{c.tpa_rate / 100.}</td></tr>
           <tr><td>TPA Breakpoint</td><td>{c.tpa_breakpoint}</td></tr>
         </tbody>
       </Table>;
