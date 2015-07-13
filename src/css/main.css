@@ -75,6 +75,29 @@ ul {
   color: #888888;
 }
 
+.pids h3 {
+  text-align: center;
+  background-color: #f0f0f0;
+  margin-bottom: 0px;
+  color: #444444;
+  font-size: 1.3em;
+  padding-top: 5px;
+  border-top: solid 1px #ddd;
+  border-collapse: collapse;
+  padding-bottom: 5px;
+}
+
+.pids h3:first-of-type {
+  margin-top: 0px;
+  border-bottom: solid 1px #ddd;
+}
+
+@media screen and (max-width: 768px) {
+  .jumbotron {
+    padding-left: 6px;
+  }
+}
+
 /* from bootstrap */
 .collapse {
   display: none;
@@ -102,8 +125,4 @@ ul {
   display: -webkit-flex;
   display: -ms-flexbox;
   display: flex;
-}
-
-.SwipeViewsTab {
-  cursor: pointer;
 }

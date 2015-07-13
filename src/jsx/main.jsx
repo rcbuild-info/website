@@ -64,18 +64,17 @@ var BuildSettings = React.createClass({
   render: function() {
     if (!this.state.cleanflightSettings) return <div></div>;
     var c = this.state.cleanflightSettings;
-    var p_roll = c.pid_controller == 2 ? c.p_rollf : c.p_roll;
-    var i_roll = c.pid_controller == 2 ? c.i_rollf : c.i_roll;
+    var p_roll = c.pid_controller == 2 ? c.p_rollf : c.p_roll / 10;
+    var i_roll = c.pid_controller == 2 ? c.i_rollf : c.i_roll / 1000;
     var d_roll = c.pid_controller == 2 ? c.d_rollf : c.d_roll;
-    var p_pitch = c.pid_controller == 2 ? c.p_pitchf : c.p_pitch;
-    var i_pitch = c.pid_controller == 2 ? c.i_pitchf : c.i_pitch;
+    var p_pitch = c.pid_controller == 2 ? c.p_pitchf : c.p_pitch / 10.;
+    var i_pitch = c.pid_controller == 2 ? c.i_pitchf : c.i_pitch / 1000.;
     var d_pitch = c.pid_controller == 2 ? c.d_pitchf : c.d_pitch;
-    var p_yaw = c.pid_controller == 2 ? c.p_yawf : c.p_yaw;
-    var i_yaw = c.pid_controller == 2 ? c.i_yawf : c.i_yaw;
+    var p_yaw = c.pid_controller == 2 ? c.p_yawf : c.p_yaw / 10.;
+    var i_yaw = c.pid_controller == 2 ? c.i_yawf : c.i_yaw / 1000.;
     var d_yaw = c.pid_controller == 2 ? c.d_yawf : c.d_yaw;
     var corePID =
       <div fill>
-      <Row><Col xs={4}>PID Controller</Col><Col xs={8}>{c.pid_controller}</Col></Row>
       <Table condensed striped>
         <thead>
           <tr><th></th><th>Proportional</th><th>Integral</th><th>Derivative</th></tr>
@@ -86,22 +85,36 @@ var BuildSettings = React.createClass({
           <tr><td>Yaw</td><td>{p_yaw}</td><td>{i_yaw}</td><td>{d_yaw}</td></tr>
         </tbody>
       </Table>
+      <Table condensed striped>
+        <tbody>
+          <tr><td>PID Controller</td><td>{c.pid_controller}</td></tr>
+          <tr><td>looptime</td><td>{c.looptime}</td></tr>
+        </tbody>
+      </Table>
       </div>;
     var rates =
-        [<Row key='roll_rate'><Col xs={4}>Roll</Col><Col xs={8}>{c.roll_rate}</Col></Row>,
-         <Row key='pitch_rate'><Col xs={4}>Pitch</Col><Col xs={8}>{c.pitch_rate}</Col></Row>,
-         <Row key='yaw_rate'><Col xs={4}>Yaw</Col><Col xs={8}>{c.yaw_rate}</Col></Row>,
-         <Row key='tpa_rate'><Col xs={4}>TPA</Col><Col xs={8}>{c.tpa_rate}</Col></Row>,
-         <Row key='tpa_breakpoint'><Col xs={4}>TPA Breakpoint</Col><Col xs={8}>{c.tpa_breakpoint}</Col></Row>];
+      <Table condensed striped>
+        <tbody>
+          <tr><td>Roll</td><td>{c.roll_rate}</td></tr>
+          <tr><td>Pitch</td><td>{c.pitch_rate}</td></tr>
+          <tr><td>Yaw</td><td>{c.yaw_rate}</td></tr>
+          <tr><td>TPA</td><td>{c.tpa_rate}</td></tr>
+          <tr><td>TPA Breakpoint</td><td>{c.tpa_breakpoint}</td></tr>
+        </tbody>
+      </Table>;
     var filter =
-        [<Row key='gyro_lpf'><Col xs={4}>gyro_lpf</Col><Col xs={8}>{c.gyro_lpf}</Col></Row>,
-         <Row key='dterm_cut_hz'><Col xs={4}>dterm_cut_hz</Col><Col xs={8}>{c.dterm_cut_hz}</Col></Row>,
-         <Row key='pterm_cut_hz'><Col xs={4}>pterm_cut_hz</Col><Col xs={8}>{c.pterm_cut_hz}</Col></Row>,
-         <Row key='gyro_cut_hz'><Col xs={4}>gyro_cut_hz</Col><Col xs={8}>{c.gyro_cut_hz}</Col></Row>];
-    return (<div>
-              <Panel header='Core'>{corePID}</Panel>
-              <Panel header='Rates'>{rates}</Panel>
-              <Panel header='Filter'>{filter}</Panel>
+      <Table condensed striped>
+        <tbody>
+          <tr><td>gyro_lpf</td><td>{c.gyro_lpf}</td></tr>
+          <tr><td>dterm_cut_hz</td><td>{c.dterm_cut_hz}</td></tr>
+          <tr><td>pterm_cut_hz</td><td>{c.pterm_cut_hz}</td></tr>
+          <tr><td>gyro_cut_hz</td><td>{c.gyro_cut_hz}</td></tr>
+        </tbody>
+      </Table>;
+    return (<div className="pids">
+              <div><h3>Core</h3>{corePID}</div>
+              <div><h3>Rates</h3>{rates}</div>
+              <div><h3>Filter</h3>{filter}</div>
             </div>);
   }
 });
@@ -148,7 +161,8 @@ var Part = React.createClass({
     return React.findDOMNode(this.refs.panel).scrollHeight;
   },
 
-  onHandleToggle: function(e){
+  onHandleToggle: function(e) {
+    ga('send', 'event', 'part', 'toggle', this.props.id);
     e.preventDefault();
     this.setState({expanded:!this.state.expanded});
   },
@@ -206,10 +220,10 @@ var BuildCard = React.createClass({
     return <Panel header={header} className="build-card">
         <Row className="row-eq-height" fill>
           <Col xs={8}>
-            <div className='embed-responsive embed-responsive-16by9'><iframe className='embed-responsive-item' src="https://www.youtube.com/embed/-t-pb3jMmbk?controls=0&rel=0&showinfo=0"/></div>
+            <div className='embed-responsive embed-responsive-16by9'><iframe className='embed-responsive-item' src={ "https://www.youtube.com/embed/" + this.props.flightInfo.hd.url + "?controls=0&rel=0&showinfo=0&start=" + this.props.flightInfo.hd.arm_time}/></div>
           </Col>
           <Col xs={4}>
-            <div className='embed-responsive embed-responsive-16by9'><iframe className='embed-responsive-item' src="https://www.youtube.com/embed/DsrK2Y6CjhY?controls=0&rel=0&showinfo=0"/></div>
+            <div className='embed-responsive embed-responsive-16by9'><iframe className='embed-responsive-item' src={ "https://www.youtube.com/embed/" + this.props.flightInfo.flight.url + "?controls=0&rel=0&showinfo=0&start=" + this.props.flightInfo.flight.arm_time}/></div>
             <div className='blackbox'></div>
           </Col>
         </Row>
@@ -219,10 +233,22 @@ var BuildCard = React.createClass({
 
 var BuildList = React.createClass({
   render: function() {
-    var buildIds = ["tannewt/Blackout", "kvanvranken/QAV250"];
+    var buildIds = ["tannewt/Blackout",
+                    "kvanvranken/QAV250"];
+    var flightInfo = {"tannewt/Blackout":
+                       {"hd": {"url":"-t-pb3jMmbk",
+                               "arm_time": 28.47},
+                        "flight": {"url": "DsrK2Y6CjhY",
+                                   "arm_time": 0},
+                        "blackbox": {"url": "https://www.dropbox.com/s/nnh9tau26rmr2og/LOG00344.TXT?dl=0"}},
+                      "kvanvranken/QAV250": {"hd": {"url":"vRNahTMs5zg",
+                              "arm_time": 0},
+                       "flight": {"url": "JMKLkgrkkoE",
+                                  "arm_time": 0},
+                       "blackbox": {"url": ""}}};
     var builds = [];
     for (var i in buildIds) {
-      builds.push((<BuildCard id={ buildIds[i] } key={ buildIds[i] }/>))
+      builds.push((<BuildCard id={ buildIds[i] } key={ buildIds[i]} flightInfo={ flightInfo[buildIds[i]]}/>))
     }
     return <div>{builds}</div>;
   }
@@ -412,11 +438,16 @@ if (base == "build") {
   content = <BuildList/>;
   github = 'https://github.com/tannewt/rcbuild.info';
 } else if (base === "") {
+  var url = "https://github.com/tannewt/rcbuild.info-build-skeleton/blob/master/README.md";
+  var onClick = function() {
+    trackOutboundLink(url);
+    event.preventDefault ? event.preventDefault() : event.returnValue = !1;
+  };
   content =
           <Jumbotron>
             <h1>Welcome!</h1>
-            <p>Find a build and PIDs to make the best flying multirotor you've ever had. Or, start with a build you already have and find the best PIDs.</p>
-            <p><Button bsStyle='primary' href="/builds">Find Build</Button> <Button bsStyle='primary'>Existing Build</Button></p>
+            <p>Find a build and PIDs to make the best flying multirotor you've ever had. Or, share a build and PIDs you already have to get feedback easily.</p>
+            <p><Button bsStyle='primary' href="/builds">Find Build</Button> <Button bsStyle='primary' onClick={onClick} href={url}>Share Build</Button></p>
           </Jumbotron>
   github = 'https://github.com/tannewt/rcbuild.info';
 }
