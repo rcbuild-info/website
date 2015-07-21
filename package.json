@@ -17,25 +17,66 @@
   },
   "homepage": "https://github.com/tannewt/rcbuild.info#readme",
   "devDependencies": {
+    "babelify": "^6.1.3",
+    "eslint": "^0.24.1",
+    "eslint-plugin-react": "^2.7.1",
     "grunt": "^0.4.5",
     "grunt-browserify": "^3.8.0",
     "grunt-contrib-clean": "^0.6.0",
     "grunt-contrib-concat": "^0.5.1",
     "grunt-contrib-cssmin": "^0.12.3",
-    "grunt-contrib-jshint": "^0.11.2",
     "grunt-contrib-uglify": "^0.9.1",
     "grunt-contrib-watch": "^0.6.1",
-    "grunt-exorcise": "^2.1.0",
-    "grunt-react": "^0.12.2"
+    "grunt-eslint": "^16.0.0",
+    "grunt-exorcise": "^2.1.0"
   },
   "dependencies": {
-    "babel-core": "^5.6.15",
     "classnames": "^2.1.2",
     "js-cookie": "^2.0.2",
     "react": "^0.13.3",
     "react-bootstrap": "^0.23.5",
-    "react-swipe-views": "0.0.9",
-    "superagent": "^1.2.0",
-    "underscore": "^1.8.3"
+    "superagent": "^1.2.0"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "node": true,
+      "es6": true
+    },
+    "rules": {
+      "strict": [
+        2,
+        "global"
+      ],
+      "react/display-name": 0,
+      "react/jsx-boolean-value": 1,
+      "react/jsx-no-undef": 1,
+      "react/jsx-quotes": 1,
+      "react/jsx-sort-prop-types": 1,
+      "react/jsx-sort-props": 1,
+      "react/jsx-uses-react": 1,
+      "react/jsx-uses-vars": 1,
+      "react/no-danger": 1,
+      "react/no-did-mount-set-state": [1, "allow-in-func"],
+      "react/no-did-update-set-state": 1,
+      "react/no-multi-comp": 1,
+      "react/no-unknown-property": 1,
+      "react/prop-types": 1,
+      "react/react-in-jsx-scope": 1,
+      "react/require-extension": 1,
+      "react/self-closing-comp": 1,
+      "react/sort-comp": 1,
+      "react/wrap-multilines": 1
+    },
+    "ecmaFeatures": {
+      "modules": true,
+      "jsx": true
+    },
+    "plugins": [
+      "react"
+    ],
+    "globals": {
+      "ga": false
+    }
   }
 }

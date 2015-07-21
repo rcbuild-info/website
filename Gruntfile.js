@@ -1,62 +1,57 @@
-module.exports = function(grunt) {
 
+module.exports = function(grunt) {
   // Project configuration.
   grunt.initConfig({
-    pkg: grunt.file.readJSON('package.json'),
+    pkg: grunt.file.readJSON("package.json"),
     uglify: {
       options: {
-        banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n',
+        banner: "/*! <%= pkg.name %> <%= grunt.template.today(\"yyyy-mm-dd\") %> */\n",
         sourceMap: true,
-        sourceMapIn: 'static/js/<%= pkg.name %>.deps.js.map',
+        sourceMapIn: "out/exorcise/<%= pkg.name %>.deps.js.map",
         mangle: true,
         beautify: false
       },
       build: {
-        src: '<%= browserify.main.dest %>',
-        dest: 'static/js/<%= pkg.name %>.min.js'
-      }
-    },
-    react: {
-      files: {
-        expand: true,
-        cwd: 'src/jsx',
-        src: ['**/*.jsx'],
-        dest: 'static/js',
-        ext: '.js'
+        src: "<%= browserify.main.dest %>",
+        dest: "static/js/<%= pkg.name %>.min.js"
       }
     },
     concat: {
       options: {
         // define a string to put between each file in the concatenated output
-        separator: ';'
+        separator: ";"
       },
       dist: {
         // the files to concatenate
-        src: ['static/js/main.js'],
+        src: ["out/react/*.js"],
         // the location of the resulting JS file
-        dest: 'static/js/<%= pkg.name %>.js'
+        dest: "out/concat/<%= pkg.name %>.js"
       }
     },
-    jshint: {
+    eslint: {
       // define the files to lint
-      files: ['gruntfile.js', 'src/**/*.js', 'test/**/*.js']
+      target: ["gruntfile.js", "src/jsx/*.jsx"]
     },
     browserify: {
       options: {
         browserifyOptions: {
-          debug: true
+          debug: true,
+          extensions: [".js", ".jsx", ".es6"]
         }
       },
       main: {
-        src: 'static/js/<%= pkg.name %>.js',
-        dest: 'static/js/<%= pkg.name %>.deps.js'
+        src: ["src/jsx/*.jsx", "src/jsx/*.es6"],
+        dest: "out/browserify/<%= pkg.name %>.deps.js",
+        options: {
+          transform: [ "babelify" ]
+        }
       }
     },
     exorcise: {
       bundle: {
         options: {},
         files: {
-          'static/js/<%= pkg.name %>.deps.js.map': ['static/js/<%= pkg.name %>.deps.js'],
+          "out/exorcise/<%= pkg.name %>.deps.js.map": ["out/browserify/<%= pkg.name %>.deps.js"]
         }
       }
     },
@@ -66,29 +61,28 @@ module.exports = function(grunt) {
       },
       target: {
         files: {
-          'static/css/main.min.css': ['src/css/*.css',
-                                      'node_modules/react-swipe-views/lib/react-swipe-views.css']
+          "static/css/main.min.css": ["src/css/*.css",
+                                      "node_modules/react-swipe-views/lib/react-swipe-views.css"]
         }
       }
     },
     watch: {
-      files: ['<%= jshint.files %>', 'src/jsx/*.jsx', 'src/css/*.css'],
-      tasks: ['default']
+      files: ["<%= eslint.target %>", "src/jsx/*.jsx", "src/css/*.css"],
+      tasks: ["default"]
     }
   });
 
   // Load the plugin that provides the "uglify" task.
-  grunt.loadNpmTasks('grunt-contrib-uglify');
-  grunt.loadNpmTasks('grunt-react');
-  grunt.loadNpmTasks('grunt-contrib-clean');
-  grunt.loadNpmTasks('grunt-contrib-concat');
-  grunt.loadNpmTasks('grunt-contrib-watch');
-  grunt.loadNpmTasks('grunt-contrib-jshint');
-  grunt.loadNpmTasks('grunt-browserify');
-  grunt.loadNpmTasks('grunt-contrib-cssmin');
-  grunt.loadNpmTasks('grunt-exorcise');
+  grunt.loadNpmTasks("grunt-contrib-uglify");
+  grunt.loadNpmTasks("grunt-contrib-clean");
+  grunt.loadNpmTasks("grunt-contrib-concat");
+  grunt.loadNpmTasks("grunt-contrib-watch");
+  grunt.loadNpmTasks("grunt-eslint");
+  grunt.loadNpmTasks("grunt-browserify");
+  grunt.loadNpmTasks("grunt-contrib-cssmin");
+  grunt.loadNpmTasks("grunt-exorcise");
 
   // Default task(s).
-  grunt.registerTask('default', ['jshint', 'react', 'concat', 'browserify', 'exorcise', 'uglify', 'cssmin']);
+  grunt.registerTask("default", ["eslint", "browserify", "exorcise", "uglify", "cssmin"]);
 
 };

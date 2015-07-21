@@ -10,3 +10,4 @@ static/css/
 rcbuild.info.env
 .module-cache/
 parts-repo
+out/*
