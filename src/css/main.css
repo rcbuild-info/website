@@ -13,10 +13,17 @@ body {
 }
 
 .part .name {
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
   cursor: pointer;
+}
+
+.part .name {
+  text-overflow: ellipsis;
+  overflow-x: hidden;
+  white-space: nowrap;
+}
+
+.partEntry .name {
+  overflow: visible;
 }
 
 .category {
@@ -28,9 +35,49 @@ body {
   cursor: pointer;
 }
 
-.part .name, .part .category {
+.part .name, .part .category, .partEntry .category {
   padding-top: 0.5em;
   padding-bottom: 0.5em;
+}
+
+.react-autosuggest {
+  position: relative;
+}
+
+.react-autosuggest input {
+  width: 100%;
+}
+
+.react-autosuggest__suggestions {
+  position: absolute;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+  border: 1px solid #aaa;
+  background-color: #fff;
+  z-index: 2;
+}
+
+.react-autosuggest__suggestions-section-name {
+    color: #444444;
+}
+
+.react-autosuggest__suggestion {
+  color: #333333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.panel-title button {
+  float: right;
+}
+
+.partEntry .name {
+  padding-left: 0px;
+  padding-right: 0px;
 }
 
 a.unknown {
@@ -61,7 +108,7 @@ ul {
   height: 100%;
 }
 
-.build-card .row, .part .row {
+.build-card .row, .part .row, .partEntry .row {
   margin-left: 0px;
   margin-right: 0px;
 }

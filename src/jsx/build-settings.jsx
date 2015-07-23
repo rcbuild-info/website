@@ -1,6 +1,8 @@
 import React from "react";
 import request from "superagent";
 
+import Button from "react-bootstrap/lib/Button";
+import Panel from "react-bootstrap/lib/Panel";
 import Table from "react-bootstrap/lib/Table";
 
 export default class BuildSettings extends React.Component {
@@ -16,7 +18,7 @@ export default class BuildSettings extends React.Component {
 
   componentDidMount() {
     this.activeRequest =
-      request.get("/build/" + this.props.user + "/" + this.props.repo + "/cleanflight_cli_dump.txt")
+      request.get("/build/" + this.props.user + "/" + this.props.branch + "/cleanflight_cli_dump.txt")
              .end(function(err, res){
                this.activeRequest = null;
                if (err || !res.ok) {
@@ -105,14 +107,17 @@ export default class BuildSettings extends React.Component {
           </tbody>
         </Table>
       );
-    return (<div className="pids">
-              <div><h3>Core</h3>{corePID}</div>
-              <div><h3>Rates</h3>{rates}</div>
-              <div><h3>Filter</h3>{filter}</div>
-            </div>);
+    var header = <div>PIDs<Button bsSize="xsmall" disabled>Upload</Button></div>;
+    return (<Panel header={header}>
+              <div className="pids" fill>
+                <div><h3>Core</h3>{corePID}</div>
+                <div><h3>Rates</h3>{rates}</div>
+                <div><h3>Filter</h3>{filter}</div>
+              </div>
+            </Panel>);
   }
 }
 BuildSettings.propTypes = {
-  repo: React.PropTypes.string,
+  branch: React.PropTypes.string,
   user: React.PropTypes.string
 };

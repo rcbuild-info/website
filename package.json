@@ -33,7 +33,9 @@
   "dependencies": {
     "classnames": "^2.1.2",
     "js-cookie": "^2.0.2",
+    "json-stable-stringify": "^1.0.0",
     "react": "^0.13.3",
+    "react-autosuggest": "^1.18.3",
     "react-bootstrap": "^0.23.5",
     "superagent": "^1.2.0"
   },
@@ -57,7 +59,10 @@
       "react/jsx-uses-react": 1,
       "react/jsx-uses-vars": 1,
       "react/no-danger": 1,
-      "react/no-did-mount-set-state": [1, "allow-in-func"],
+      "react/no-did-mount-set-state": [
+        1,
+        "allow-in-func"
+      ],
       "react/no-did-update-set-state": 1,
       "react/no-multi-comp": 1,
       "react/no-unknown-property": 1,

@@ -26,6 +26,9 @@ module.exports = React.createClass({
   },
 
   componentDidMount: function() {
+    if (this.props.id.length < 1) {
+      return;
+    }
     request.get("/part/" + this.props.id + ".json")
            .end(function(err, res){
              if (err || !this.isMounted()) {
@@ -61,7 +64,7 @@ module.exports = React.createClass({
     var styles = this.getCollapsibleClassSet();
     var unknown = "";
     if (this.state.unknown) {
-      unknown = (<a className="unknown" href="https://github.com/tannewt/rcbuild.info-part-skeleton" target="_blank" title="This part is unknown. Click for more information on how to add it." >?</a>);
+      unknown = (<a className="unknown" href="https://github.com/rcbuild-info/part-skeleton" target="_blank" title="This part is unknown. Click for more information on how to add it." >?</a>);
     }
     var partInfo = (<Col className="name" xs={8}>{this.props.id}{unknown}</Col>);
     if (this.state.partInfo.name) {
