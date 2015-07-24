@@ -48,6 +48,10 @@ body {
   width: 100%;
 }
 
+.react-autosuggest input:focus {
+  outline: none;
+}
+
 .react-autosuggest__suggestions {
   position: absolute;
   width: 100%;

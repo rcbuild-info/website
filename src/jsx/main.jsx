@@ -1,3 +1,5 @@
+require("babelify/polyfill");
+
 var React = require("react");
 var Cookies = require("js-cookie");
 var Grid = require("react-bootstrap/lib/Grid");
