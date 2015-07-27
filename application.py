@@ -243,11 +243,7 @@ def create_fork_and_branch(user, branch):
       return Response(status=requests.codes.server_error)
   return Response()
 
-def update_build(user, branch):
-  if int(request.headers["Content-Length"]) > 2048:
-    return Response(status=requests.codes.bad_request)
-  new_build_contents = request.get_data()
-
+def new_commit(user, branch, tree, message):
   # Get the sha of the current commit at head.
   result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + branch)
   if result.status_code != requests.codes.ok:
@@ -269,10 +265,7 @@ def update_build(user, branch):
                               "repos/" + user + "/rcbuild.info-builds/git/trees",
                               data=json.dumps(
                                 {"base_tree": last_tree_sha,
-                                 "tree": [{"path": "build.json",
-                                           "mode": "100644",
-                                           "type": "blob",
-                                           "content": new_build_contents}]
+                                 "tree": tree
                                 }))
   if result.status_code != requests.codes.created:
     print(result.status_code)
@@ -284,7 +277,7 @@ def update_build(user, branch):
   result = github.raw_request("POST",
                               "repos/" + user + "/rcbuild.info-builds/git/commits",
                               data=json.dumps(
-                                {"message": "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".",
+                                {"message": message,
                                  "parents": [latest_commit_sha],
                                  "tree": new_tree_sha}))
   if result.status_code != requests.codes.created:
@@ -305,6 +298,17 @@ def update_build(user, branch):
 
   return Response()
 
+def update_build(user, branch):
+  if int(request.headers["Content-Length"]) > 2048:
+    return Response(status=requests.codes.bad_request)
+  new_build_contents = request.get_data()
+  new_tree = [{"path": "build.json",
+               "mode": "100644",
+               "type": "blob",
+               "content": new_build_contents}]
+  return new_commit(user, branch, new_tree, "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".")
+
+
 @app.route('/build/<user>/<branch>.json', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def build_json(user, branch):
   if request.method == "GET":
@@ -317,6 +321,25 @@ def build_json(user, branch):
       return update_build(user, branch)
     else:
       return create_fork_and_branch(user, branch)
+
+@app.route('/build/<user>/<branch>/settings', methods=["GET", "HEAD", "OPTIONS", "POST"])
+def setting_upload(user, branch):
+  if request.method != "POST":
+    return Response(status=requests.codes.method_not_allowed)
+  if int(request.headers["Content-Length"]) > 40*(2**10):
+    print(request.headers["Content-Length"])
+    return Response(status=requests.codes.bad_request)
+  new_tree = [{"path": "cleanflight_gui_backup.json",
+               "mode": "100644",
+               "type": "blob",
+               "content": request.files["cleanflight_gui_backup.json"].read()},
+              {"path": "cleanflight_cli_dump.txt",
+               "mode": "100644",
+               "type": "blob",
+               "content": request.files["cleanflight_cli_dump.txt"].read()}
+              ]
+  # TODO(tannewt): Ensure that the file contents are from cleanflight.
+  return new_commit(user, branch, new_tree, "Build setting update via https://rcbuild.info/build/" + user + "/" + branch + ".")
 
 @app.route('/build/<user>/<branch>/<filename>')
 def config_json(user, branch, filename):

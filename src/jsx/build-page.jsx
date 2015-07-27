@@ -82,7 +82,7 @@ export default class BuildPage extends React.Component {
                   <BuildParts branch={this.props.branch} buildInfo={this.state.buildInfo} fill loggedInUser={this.props.loggedInUser} user={this.props.user}/>
                 </Col>
                 <Col md={6}>
-                  <BuildSettings branch={this.props.branch} user={this.props.user}/>
+                  <BuildSettings branch={this.props.branch} loggedInUser={this.props.loggedInUser} user={this.props.user}/>
                 </Col>
               </Row>);
     } else if (this.state.status === "DNE") {
