@@ -349,6 +349,10 @@ def config_json(user, branch, filename):
 def part_categories():
     return get_github("repos/rcbuild-info/part-skeleton/contents/partCategories.json", {"accept": "application/vnd.github.v3.raw"})
 
+@app.route('/healthz')
+def healthz():
+  return Response(response="ok", content_type="Content-Type: text/plain; charset=utf-8", status=requests.codes.ok)
+
 updatePartIndexHelper()
 if __name__ == '__main__':
     application.run(debug = True)
