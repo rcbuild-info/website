@@ -230,7 +230,7 @@ export default class BuildParts extends React.Component {
     if (this.state.saving) {
       alert = (<Alert bsStyle="info" fill><strong>Saving</strong> Hold on, your build is saving.</Alert>);
     } else if (this.state.share) {
-      alert = (<Alert bsStyle="success" fill onDismiss={this.onShareDismiss}><strong>Share!</strong> Your build is saved. Copy <a href={window.location}>the link</a> to share anywhere.</Alert>);
+      alert = (<Alert bsStyle="success" fill onDismiss={this.onShareDismiss}><strong>Saved!</strong> Your build is saved. <a href={window.location}>Link here</a> to share this build!</Alert>);
     }
     return (<Panel className="build-parts" header={header}><div fill>{alert}<div fill>{parts}</div></div></Panel>);
   }
