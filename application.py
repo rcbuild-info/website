@@ -1,6 +1,7 @@
 from cryptography.fernet import Fernet
 from flask import Flask, render_template, Response, abort, session, request, url_for, flash, redirect
 from flask.ext.github import GitHub, GitHubError
+from elasticsearch import Elasticsearch
 import os
 import os.path
 
@@ -19,6 +20,8 @@ app.secret_key = os.environ['SESSION_SECRET_KEY']
 
 FERNET_KEY = os.environ['FERNET_KEY']
 f = Fernet(FERNET_KEY)
+
+es = Elasticsearch([os.environ['ES_HOST']])
 
 from git import Repo
 
@@ -116,6 +119,39 @@ def parts(classification):
 def index():
     return render_template('main.html')
 
+@app.route('/update/buildIndex', methods=["GET", "HEAD", "OPTIONS", "POST"])
+def updateBuildIndex():
+  # Don't update if we can't validate the requester.
+  if request.method == "POST":
+    request_data = request.get_data()
+    push_info = json.loads(request_data)
+    user = push_info["repository"]["owner"]["name"]
+    res = es.get(index='private', doc_type='githubsecret', id=user)
+    if not res["found"]:
+      abort(403)
+    h = hmac.new(str(res["_source"]["secret"]), request.data, sha1)
+    if not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+      abort(403)
+
+    branch = push_info["ref"][len("refs/heads/"):]
+
+    for commit in push_info["commits"]:
+      if "build.json" in commit["modified"]:
+        r = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + commit["id"], headers={"accept": "application/vnd.github.v3.raw"})
+        if r.status_code != requests.codes.ok:
+          continue
+        build = json.loads(r.text)
+        snapshot = {
+          "timestamp": commit["timestamp"],
+          "user": user,
+          "branch": branch,
+          "build": build
+        }
+        res = es.index(index='public', doc_type='buildsnapshot', id=commit["id"], body=snapshot)
+        if not res["created"] and res["_version"] < 1:
+          return Response(status=requests.codes.server_error)
+  return Response('ok')
+
 @app.route('/builds')
 def builds():
     return render_template('main.html')
@@ -192,6 +228,8 @@ def authorized(oauth_token):
 
 @github.access_token_getter
 def token_getter():
+  if request.path == "/update/buildIndex":
+    return os.environ["READONLY_GITHUB_TOKEN"]
   if "o" in session:
     return f.decrypt(session["o"])
   return None
@@ -220,6 +258,36 @@ def create_fork_and_branch(user, branch):
   if result.status_code != requests.codes.accepted:
     return Response(status=requests.codes.server_error)
   repo_info = json.loads(result.text)
+
+  # Double check we have setup the webhook
+  result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/hooks")
+  if result.status_code != requests.codes.ok:
+    return Response(status=requests.codes.server_error)
+  all_hooks = json.loads(result.text)
+  hook_exists = False
+  for hook in all_hooks:
+    if hook["config"]["url"] == "https://rcbuild.info/update/buildIndex":
+      hook_exists = True
+      break
+
+  if not hook_exists:
+    secret = os.urandom(24)
+    b64_secret = base64.b64encode(secret)
+    res = es.index(index="private", doc_type="githubsecret", id=user, body={"secret": b64_secret})
+    if not res["created"] and res["_version"] < 1:
+      return Response(status=requests.codes.server_error)
+
+    hook = {"name": "web",
+            "config": {
+              "url": "https://rcbuild.info/update/buildIndex",
+              "content_type": "json",
+              "secret": b64_secret
+            },
+            "events": ["push"],
+            "active": True}
+    result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/hooks", data=json.dumps(hook))
+    if result.status_code != requests.codes.created:
+      return Response(status=requests.codes.server_error)
 
   # Get all branches for the repo.
   result = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/git/refs")
