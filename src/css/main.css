@@ -40,6 +40,10 @@ body {
   padding-bottom: 0.5em;
 }
 
+.build-parts .alert {
+  margin-bottom: 0px;
+}
+
 .react-autosuggest {
   position: relative;
 }

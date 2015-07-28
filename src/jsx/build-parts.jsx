@@ -2,6 +2,7 @@ import React from "react";
 import request from "superagent";
 import stringify from "json-stable-stringify";
 
+import Alert from "react-bootstrap/lib/Alert";
 import Button from "react-bootstrap/lib/Button";
 import Panel from "react-bootstrap/lib/Panel";
 
@@ -16,12 +17,14 @@ export default class BuildParts extends React.Component {
     this.onPartChange = this.onPartChange.bind(this);
     this.onSave = this.onSave.bind(this);
     this.onEdit = this.onEdit.bind(this);
+    this.onShareDismiss = this.onShareDismiss.bind(this);
     this.state = {
       buildInfo: {},
       partCategories: {},
       editing: false,
       supportedParts: {},
-      saving: false
+      saving: false,
+      share: false
     };
     this.buildInfoDirty = false;
     this.partCategoriesRequest = null;
@@ -151,20 +154,24 @@ export default class BuildParts extends React.Component {
           return this.state.partCategories.categories[a.key].order - this.state.partCategories.categories[b.key].order;
          }.bind(this),
          space: 2});
-     this.saveRequest =
-       request.post("/build/" + this.props.user + "/" + this.props.branch + ".json")
-              .set("Content-Type", "application/json")
-              .send(newBuild)
-              .end(function(err2, res2){
-                this.saveRequest = null;
-                if (!err2 && res2.ok) {
-                 this.buildInfoDirty = false;
-                 this.setState({
-                   editing: false,
-                   saving: false
-                 });
+      this.setState({
+        saving: true
+      });
+      this.saveRequest =
+        request.post("/build/" + this.props.user + "/" + this.props.branch + ".json")
+               .set("Content-Type", "application/json")
+               .send(newBuild)
+               .end(function(err2, res2){
+                 this.saveRequest = null;
+                 if (!err2 && res2.ok) {
+                   this.buildInfoDirty = false;
+                   this.setState({
+                     editing: false,
+                     saving: false,
+                     share: true
+                   });
                 }
-              }.bind(this));
+               }.bind(this));
     }
     this.setState({
       editing: false
@@ -174,6 +181,12 @@ export default class BuildParts extends React.Component {
   onEdit() {
     this.setState({
       editing: true
+    });
+  }
+
+  onShareDismiss() {
+    this.setState({
+      share: false
     });
   }
 
@@ -213,7 +226,13 @@ export default class BuildParts extends React.Component {
       buttons = <Button bsSize="xsmall" disabled={this.props.user !== this.props.loggedInUser} onClick={this.onEdit}>Edit</Button>;
     }
     var header = <div>Build{buttons}</div>;
-    return (<Panel header={header}><div fill>{parts}</div></Panel>);
+    var alert = null;
+    if (this.state.saving) {
+      alert = (<Alert bsStyle="info" fill><strong>Saving</strong> Hold on, your build is saving.</Alert>);
+    } else if (this.state.share) {
+      alert = (<Alert bsStyle="success" fill onDismiss={this.onShareDismiss}><strong>Share!</strong> Your build is saved. Copy <a href={window.location}>the link</a> to share anywhere.</Alert>);
+    }
+    return (<Panel className="build-parts" header={header}><div fill>{alert}<div fill>{parts}</div></div></Panel>);
   }
 }
 BuildParts.propTypes = {

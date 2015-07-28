@@ -23,7 +23,7 @@ export default class PartDetails extends React.Component {
      });
   }
 
-  static onClick(url) {
+  static onClick(url, event) {
     PartDetails.trackOutboundLink(url);
     if (event.preventDefault) {
       event.preventDefault();
