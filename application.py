@@ -196,16 +196,23 @@ def token_getter():
     return f.decrypt(session["o"])
   return None
 
-@app.route('/part/<manufacturer>/<name>.json')
-def part_json(manufacturer, name):
-  if manufacturer in LINKS and name in LINKS[manufacturer]:
-    url = '/part/' + "/".join(LINKS[manufacturer][name]) + ".json"
+def part_helper(manufacturerID, partID):
+  if manufacturerID in LINKS and partID in LINKS[manufacturerID]:
+    url = '/part/' + "/".join(LINKS[manufacturerID][partID]) + ".json"
     if not application.debug:
       url = urlparse.urljoin("https://rcbuild.info", url)
     return redirect(url)
-  if manufacturer in PARTS_BY_ID and name in PARTS_BY_ID[manufacturer]:
-    return json.dumps(PARTS_BY_ID[manufacturer][name])
+  if manufacturerID in PARTS_BY_ID and partID in PARTS_BY_ID[manufacturerID]:
+    return json.dumps(PARTS_BY_ID[manufacturerID][partID])
   abort(404)
+
+@app.route('/part/<manufacturerID>/<partID>.json')
+def part_json(manufacturerID, partID):
+  return part_helper(manufacturerID, partID)
+
+@app.route('/part/UnknownManufacturer/<siteID>/<partID>.json')
+def unknown_part_json(siteID, partID):
+  return part_helper("UnknownManufacturer/" + siteID, partID)
 
 def create_fork_and_branch(user, branch):
   # Create a fork of our base repo or get info on one that already exists.

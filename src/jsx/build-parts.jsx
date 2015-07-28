@@ -118,7 +118,7 @@ export default class BuildParts extends React.Component {
     for (let manufacturerID of Object.keys(parts)) {
       for (let partID of Object.keys(parts[manufacturerID])) {
         let part = parts[manufacturerID][partID];
-        part.fullName = part.manufacturer + " " + part.name;
+        part.fullName = (part.manufacturer + " " + part.name).trim();
         part.id = manufacturerID + "/" + partID;
       }
     }

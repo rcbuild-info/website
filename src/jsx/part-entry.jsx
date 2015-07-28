@@ -18,7 +18,7 @@ export default class PartEntry extends React.Component {
   }
 
   suggestionValue(suggestion) {
-    return suggestion.manufacturer + " " + suggestion.name;
+    return (suggestion.manufacturer + " " + suggestion.name).trim();
   }
 
   newIdHelper(idIndex, id) {
@@ -75,7 +75,11 @@ export default class PartEntry extends React.Component {
         let part = parts[manufacturerID][partID];
         if (input.length === 0 || regex.test(part.fullName)) {
           if (group.sectionName === null) {
-            group.sectionName = part.manufacturer;
+            if (part.manufacturer === "") {
+              group.sectionName = manufacturerID;
+            } else {
+              group.sectionName = part.manufacturer;
+            }
           }
           group.suggestions.push(part);
         }
@@ -111,6 +115,11 @@ export default class PartEntry extends React.Component {
   // TODO(tannewt): use shouldComponentupdate to prevent render when
   // this.props.supportedParts is updated.
 
+  static rsplit(string, sep, maxsplit) {
+    var split = string.split(sep);
+    return maxsplit ? [ split.slice(0, -maxsplit).join(sep) ].concat(split.slice(-maxsplit)) : split;
+  }
+
   getInputForId(idIndex) {
     var inputAttributes = {
       placeholder: "Enter " + this.props.model.name,
@@ -127,7 +136,7 @@ export default class PartEntry extends React.Component {
     if (id.length > 0) {
       inputAttributes.value = id;
       if (id.indexOf("/") > -1) {
-        let split = id.split("/", 2);
+        let split = PartEntry.rsplit(id, "/", 1);
         let manufacturerID = split[0];
         let partID = split[1];
         if (this.props.supportedParts &&
