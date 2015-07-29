@@ -16,6 +16,7 @@ application = app = Flask(__name__)
 app.config['GITHUB_CLIENT_ID'] = os.environ['GITHUB_CLIENT_ID']
 app.config['GITHUB_CLIENT_SECRET'] = os.environ['GITHUB_CLIENT_SECRET']
 app.config['PROPAGATE_EXCEPTIONS'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 365 * 24 * 60 * 60
 app.secret_key = os.environ['SESSION_SECRET_KEY']
 
 FERNET_KEY = os.environ['FERNET_KEY']
@@ -193,7 +194,7 @@ def set_login_info(response, oauth_token):
   user_info = json.loads(user_info.get_data(True))
   # Insecure cookie is OK when testing
   secure = "TEST_GITHUB_TOKEN" not in os.environ
-  response.set_cookie('u', user_info["login"], max_age=31 * 24 * 60, secure=secure)
+  response.set_cookie('u', user_info["login"], max_age=365 * 24 * 60 * 60, secure=secure)
   return response
 
 @app.route('/login')
