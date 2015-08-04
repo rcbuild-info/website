@@ -5,6 +5,8 @@ from elasticsearch import Elasticsearch
 import os
 import os.path
 
+import pylru
+
 import base64
 import requests
 import json
@@ -23,6 +25,8 @@ FERNET_KEY = os.environ['FERNET_KEY']
 f = Fernet(FERNET_KEY)
 
 es = Elasticsearch([os.environ['ES_HOST']])
+
+github_cache = pylru.lrucache(64)
 
 from git import Repo
 
@@ -168,16 +172,29 @@ def build(username, repo):
     return render_template('main.html')
 
 def get_github(url, headers={}):
+  has_if = False
   if "If-Modified-Since" in request.headers:
     headers["If-Modified-Since"] = request.headers["If-Modified-Since"]
+    has_if = True
   if "If-None-Match" in request.headers:
     headers["If-None-Match"] = request.headers["If-None-Match"]
+    has_if = True
+  if not has_if and "o" not in session and url in github_cache:
+    cached = github_cache[url]
+    return Response(cached["text"],
+                    status=cached["status_code"],
+                    headers=cached["headers"])
   github_response = github.raw_request("GET", url, headers=headers)
+  cache_response = url != "user"
   if github_response.status_code == requests.codes.ok:
     resp = Response(github_response.text)
     resp.headers['etag'] = github_response.headers['etag']
     resp.headers['last-modified'] = github_response.headers['last-modified']
     resp.headers['cache-control'] = github_response.headers['cache-control']
+    if cache_response:
+      github_cache[url] = {"text": github_response.text,
+                           "status_code": github_response.status_code,
+                           "headers": resp.headers}
     return resp
   elif github_response.status_code == requests.codes.not_modified:
     resp = Response(status=requests.codes.not_modified)
@@ -187,6 +204,10 @@ def get_github(url, headers={}):
       resp.headers['last-modified'] = github_response.headers['last-modified']
     resp.headers['cache-control'] = github_response.headers['cache-control']
     return resp
+  if cache_response:
+    github_cache[url] = {"text": "",
+                         "status_code": github_response.status_code,
+                         "headers": {}}
   return Response(status=github_response.status_code)
 
 def set_login_info(response, oauth_token):
