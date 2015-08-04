@@ -406,12 +406,18 @@ def setting_upload(user, branch):
     return Response(status=requests.codes.bad_request)
   new_tree = []
   for filename in ["cleanflight_cli_dump.txt", "cleanflight_gui_backup.json", "build.json"]:
+    content = None
     if filename in request.files:
-      new_tree.append(
-        {"path": filename,
-         "mode": "100644",
-         "type": "blob",
-         "content": request.files[filename].read()});
+      content = request.files[filename].read()
+    elif filename in request.form:
+      content = request.form[filename]
+    else:
+      continue
+    new_tree.append(
+      {"path": filename,
+       "mode": "100644",
+       "type": "blob",
+       "content": content});
 
   # TODO(tannewt): Ensure that the file contents are from cleanflight.
   return new_commit(user, branch, new_tree, "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".")

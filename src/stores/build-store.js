@@ -58,7 +58,6 @@ class BuildStore {
   }
   handleSetSettings(settings) {
     let build = this.builds[SiteStore.getState().primaryBuild.key];
-    console.log(build);
     if (!build.dirty.settings) {
       build.dirty.settings = {};
     }
