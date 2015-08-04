@@ -97,7 +97,7 @@ export default class RCBuildInfo extends React.Component {
                             partStore={this.state.part}
                             primaryBuild={this.state.builds[this.state.site.primaryBuild.key]}
                             primaryBuildVersion={this.state.site.primaryBuild}/>);
-      github = "https://github.com/" + this.state.site.primaryBuild.user + "/" + this.state.site.primaryBuild.branch;
+      github = "https://github.com/" + this.state.site.primaryBuild.user + "/rcbuild.info-builds/tree/" + this.state.site.primaryBuild.branch;
     } else if (this.state.site.page === "parts") {
       var classification = this.state.site.primaryBuild.partClassification;
       if (classification === "supported") {
@@ -132,8 +132,9 @@ export default class RCBuildInfo extends React.Component {
         <Navbar brand={logo} toggleNavKey={0}>
           <CollapsibleNav eventKey={0}> {/* This is the eventKey referenced */}
             <Nav navbar right>
+              <NavItem eventKey={13} href="/createbuild">Create</NavItem>
               {pageNav}
-              <NavItem eventKey={10} href={github}>View on GitHub</NavItem>
+              <NavItem eventKey={10} href={github}>GitHub</NavItem>
               {login}
             </Nav>
           </CollapsibleNav>
