@@ -12,38 +12,25 @@ module.exports = function(grunt) {
         beautify: false
       },
       build: {
-        src: "<%= browserify.main.dest %>",
+        src: "out/browserify/<%= pkg.name %>.deps.js",
         dest: "static/js/<%= pkg.name %>.min.js"
-      }
-    },
-    concat: {
-      options: {
-        // define a string to put between each file in the concatenated output
-        separator: ";"
-      },
-      dist: {
-        // the files to concatenate
-        src: ["out/react/*.js"],
-        // the location of the resulting JS file
-        dest: "out/concat/<%= pkg.name %>.js"
       }
     },
     eslint: {
       // define the files to lint
-      target: ["gruntfile.js", "src/jsx/*.jsx"]
+      target: ["gruntfile.js", "src/**/*.jsx", "src/**/*.js"]
     },
     browserify: {
-      options: {
-        browserifyOptions: {
-          debug: true,
-          extensions: [".js", ".jsx", ".es6"]
-        }
-      },
-      main: {
-        src: ["src/jsx/*.jsx", "src/jsx/*.es6"],
-        dest: "out/browserify/<%= pkg.name %>.deps.js",
+      dev: {
         options: {
-          transform: [ "babelify" ]
+          browserifyOptions: {
+            debug: true,
+            extensions: [".js", ".jsx"]
+          },
+          transform: [[ "babelify" ]]
+        },
+        files: {
+          "out/browserify/<%= pkg.name %>.deps.js": ["src/**/*.js", "src/**/*.jsx"]
         }
       }
     },
@@ -67,7 +54,7 @@ module.exports = function(grunt) {
       }
     },
     watch: {
-      files: ["<%= eslint.target %>", "src/jsx/*.jsx", "src/css/*.css"],
+      files: ["<%= eslint.target %>", "src/css/*.css"],
       tasks: ["default"]
     }
   });

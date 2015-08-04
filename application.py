@@ -107,9 +107,11 @@ def updatePartIndex():
 @app.route('/partIndex/by/<by>.json')
 def partIndex(by):
   if by == "category":
-    return json.dumps(SMALL_PARTS_BY_CATEGORY)
+    return Response(json.dumps(SMALL_PARTS_BY_CATEGORY),
+                    content_type="application/json")
   elif by == "id":
-    return json.dumps(SMALL_PARTS_BY_ID)
+    return Response(json.dumps(SMALL_PARTS_BY_ID),
+                    content_type="application/json")
   abort(404)
 
 @app.route('/parts/<classification>')
@@ -393,29 +395,26 @@ def build_json(user, branch):
       return build
     return Response(status=requests.codes.not_found)
   elif request.method == "POST":
-    if int(request.headers["Content-Length"]) > 0:
-      return update_build(user, branch)
-    else:
-      return create_fork_and_branch(user, branch)
+    return create_fork_and_branch(user, branch)
 
-@app.route('/build/<user>/<branch>/settings', methods=["GET", "HEAD", "OPTIONS", "POST"])
+@app.route('/build/<user>/<branch>/files', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def setting_upload(user, branch):
   if request.method != "POST":
     return Response(status=requests.codes.method_not_allowed)
   if int(request.headers["Content-Length"]) > 40*(2**10):
     print(request.headers["Content-Length"])
     return Response(status=requests.codes.bad_request)
-  new_tree = [{"path": "cleanflight_gui_backup.json",
-               "mode": "100644",
-               "type": "blob",
-               "content": request.files["cleanflight_gui_backup.json"].read()},
-              {"path": "cleanflight_cli_dump.txt",
-               "mode": "100644",
-               "type": "blob",
-               "content": request.files["cleanflight_cli_dump.txt"].read()}
-              ]
+  new_tree = []
+  for filename in ["cleanflight_cli_dump.txt", "cleanflight_gui_backup.json", "build.json"]:
+    if filename in request.files:
+      new_tree.append(
+        {"path": filename,
+         "mode": "100644",
+         "type": "blob",
+         "content": request.files[filename].read()});
+
   # TODO(tannewt): Ensure that the file contents are from cleanflight.
-  return new_commit(user, branch, new_tree, "Build setting update via https://rcbuild.info/build/" + user + "/" + branch + ".")
+  return new_commit(user, branch, new_tree, "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".")
 
 @app.route('/build/<user>/<branch>/<filename>')
 def config_json(user, branch, filename):

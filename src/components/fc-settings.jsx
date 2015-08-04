@@ -1,51 +1,35 @@
 import React from "react";
-import request from "superagent";
+
+import BuildActions from "../actions/build-actions";
 
 import Alert from "react-bootstrap/lib/Alert";
-import Button from "react-bootstrap/lib/Button";
 import Input from "react-bootstrap/lib/Input";
 import Panel from "react-bootstrap/lib/Panel";
 import Table from "react-bootstrap/lib/Table";
 
-export default class BuildSettings extends React.Component {
+export default class FlightControllerSettings extends React.Component {
   constructor() {
     super();
-    this.componentDidMount = this.componentDidMount.bind(this);
+    this.onChange = this.onChange.bind(this);
     this.render = this.render.bind(this);
-    this.onDone = this.onDone.bind(this);
-    this.onUpload = this.onUpload.bind(this);
     this.state = {
-      cleanflightSettings: {},
-      editing: false,
-      error: null,
-      info: null
+      primaryCleanflightSettings: {},
+      error: null
     };
-    this.activeRequest = null;
-    this.uploadRequest = null;
   }
 
-  componentDidMount() {
-    this.activeRequest =
-      request.get("/build/" + this.props.user + "/" + this.props.branch + "/cleanflight_cli_dump.txt")
-             .end(function(err, res){
-               this.activeRequest = null;
-               if (err || !res.ok) {
-                 if (err.status === 404) {
-                   this.setState({
-                     editing: true
-                   });
-                 }
-                 return;
-               }
-               this.setState({
-                 cleanflightSettings: BuildSettings.parseCleanflightDump(res.text)
-               });
-             }.bind(this));
-  }
-
-  componentWillUnmount() {
-    if (this.activeRequest) {
-      this.activeRequest.abort();
+  componentWillReceiveProps(nextProps) {
+    if (nextProps.primarySettings !== this.props.primarySettings) {
+      let cfCli = nextProps.primarySettings.cf_cli;
+      if (cfCli instanceof Blob) {
+        let reader = new FileReader();
+        reader.onloadend = function() {
+          this.setState({"primaryCleanflightSettings": FlightControllerSettings.parseCleanflightDump(reader.result)});
+        }.bind(this);
+        reader.readAsText(cfCli);
+      } else {
+        this.setState({"primaryCleanflightSettings": FlightControllerSettings.parseCleanflightDump(cfCli)});
+      }
     }
   }
 
@@ -62,7 +46,7 @@ export default class BuildSettings extends React.Component {
     return config;
   }
 
-  onDone() {
+  onChange() {
     let cg = this.refs.cleanflight_gui.getInputDOMNode().files;
     let cc = this.refs.cleanflight_cli.getInputDOMNode().files;
     if ((cg.length > 0 && cc.length === 0) ||
@@ -72,42 +56,16 @@ export default class BuildSettings extends React.Component {
       });
       return;
     }
-    if (cg.length === 0 && cc.length === 0) {
-      this.setState({
-        editing: false
-      });
-      return;
-    }
     this.setState({
-      error: null,
-      info: "Uploading..."
+      error: null
     });
-    var formData = new FormData();
-    formData.append("cleanflight_gui_backup.json", cg[0]);
-    formData.append("cleanflight_cli_dump.txt", cc[0]);
-    this.uploadRequest =
-      request.post("/build/" + this.props.user + "/" + this.props.branch + "/settings")
-             .send(formData)
-             .end(function(err, res){
-               this.uploadRequest = null;
-               if (!err && res.ok) {
-                this.setState({
-                  editing: false,
-                  info: null
-                });
-               }
-             }.bind(this));
-  }
 
-  onUpload() {
-    this.setState({
-      editing: true
-    });
+    BuildActions.setSettings({"fc": {"cf_gui": cg[0], "cf_cli": cc[0]}});
   }
 
   render() {
-    if (!this.state.editing) {
-      var c = this.state.cleanflightSettings;
+    if (!this.props.editing) {
+      var c = this.state.primaryCleanflightSettings;
       var pRoll = c.pid_controller === 2 ? c.p_rollf : c.p_roll / 10;
       var iRoll = c.pid_controller === 2 ? c.i_rollf : c.i_roll / 1000;
       var dRoll = c.pid_controller === 2 ? c.d_rollf : c.d_roll;
@@ -163,36 +121,31 @@ export default class BuildSettings extends React.Component {
         );
     }
     var content;
-    var header;
-    if (this.state.editing) {
-      header = <div>PIDs<Button bsSize="xsmall" onClick={this.onDone}>Done</Button></div>;
-      var alert;
+    if (this.props.editing) {
+      let alert;
       if (this.state.error) {
         alert = <Alert bsStyle="danger">{this.state.error}</Alert>;
-      } else if (this.state.info) {
-        alert = <Alert bsStyle="info">{this.state.info}</Alert>;
       }
       content = (<form>
                   {alert}
-                  <Input label="Cleanflight GUI backup" ref="cleanflight_gui" type="file"/>
-                  <Input label="Cleanflight CLI dump" ref="cleanflight_cli" type="file"/>
+                  <Input label="Cleanflight GUI backup" onChange={this.onChange} ref="cleanflight_gui" type="file"/>
+                  <Input label="Cleanflight CLI dump" onChange={this.onChange} ref="cleanflight_cli" type="file"/>
                   <hr/>
                  </form>);
     } else {
-      header = <div>PIDs<Button bsSize="xsmall" disabled={this.props.user !== this.props.loggedInUser} onClick={this.onUpload}>Upload</Button></div>;
       content = (<div className="pids" fill>
                   <div><h3>Core</h3>{corePID}</div>
                   <div><h3>Rates</h3>{rates}</div>
                   <div><h3>Filter</h3>{filter}</div>
                  </div>);
     }
-    return (<Panel header={header}>
+    return (<Panel header="Flight Controller Settings">
               {content}
             </Panel>);
   }
 }
-BuildSettings.propTypes = {
-  branch: React.PropTypes.string,
-  loggedInUser: React.PropTypes.string,
-  user: React.PropTypes.string
+FlightControllerSettings.propTypes = {
+  editing: React.PropTypes.bool,
+  primarySettings: React.PropTypes.oneOfType([React.PropTypes.string,
+                                              React.PropTypes.object])
 };
