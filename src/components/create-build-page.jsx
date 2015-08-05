@@ -12,7 +12,7 @@ export default class CreateBuildPage extends React.Component {
   }
 
   onClick() {
-    window.location.assign("/build/" + this.props.loggedInUser + "/" + this.refs.input.getValue());
+    window.location.assign("/build/" + this.props.loggedInUser + "/" + this.refs.input.getValue().replace(/\s/g, "-"));
   }
 
   render() {

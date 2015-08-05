@@ -328,7 +328,7 @@ def create_fork_and_branch(user, branch):
 
   # Create a new branch for this build starting at heads/master.
   result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/git/refs", data=json.dumps({"ref": "refs/heads/" + branch, "sha": master_sha}))
-  if result.status_code not in [requests.codes.created, requests.codes.unprocessable_entity]:
+  if result.status_code != requests.codes.created:
     return Response(status=requests.codes.server_error)
 
   # Update the default branch away from master if it was a new repo.
