@@ -11,6 +11,7 @@ import base64
 import requests
 import json
 import hmac
+import urllib
 import urlparse
 from hashlib import sha1
 
@@ -311,11 +312,15 @@ def create_fork_and_branch(user, branch):
             "active": True}
     result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/hooks", data=json.dumps(hook))
     if result.status_code != requests.codes.created:
+      print(result.status_code)
+      print(result.text)
       return Response(status=requests.codes.server_error)
 
   # Get all branches for the repo.
   result = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/git/refs")
   if result.status_code != requests.codes.ok:
+    print(result.status_code)
+    print(result.text)
     return Response(status=requests.codes.server_error)
   ref_info = json.loads(result.text)
 
@@ -329,6 +334,8 @@ def create_fork_and_branch(user, branch):
   # Create a new branch for this build starting at heads/master.
   result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/git/refs", data=json.dumps({"ref": "refs/heads/" + branch, "sha": master_sha}))
   if result.status_code != requests.codes.created:
+    print(result.status_code)
+    print(result.text)
     return Response(status=requests.codes.server_error)
 
   # Update the default branch away from master if it was a new repo.
@@ -339,12 +346,14 @@ def create_fork_and_branch(user, branch):
                                             "default_branch": branch,
                                             "homepage": "https://rcbuild.info/builds/" + user}))
     if result.status_code != requests.codes.ok:
+      print(result.status_code)
+      print(result.text)
       return Response(status=requests.codes.server_error)
   return Response()
 
 def new_commit(user, branch, tree, message):
   # Get the sha of the current commit at head.
-  result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + branch)
+  result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch))
   if result.status_code != requests.codes.ok:
     print(result.status_code)
     print(result.text)
@@ -387,7 +396,7 @@ def new_commit(user, branch, tree, message):
   new_commit_sha = new_commit_info["sha"]
 
   result = github.raw_request("POST",
-                              "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + branch,
+                              "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch),
                               data=json.dumps(
                                 {"sha": new_commit_sha}))
   if result.status_code != requests.codes.ok:
@@ -411,7 +420,7 @@ def update_build(user, branch):
 @app.route('/build/<user>/<branch>.json', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def build_json(user, branch):
   if request.method == "GET":
-    build = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=refs/heads/" + branch, {"accept": "application/vnd.github.v3.raw"})
+    build = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=refs/heads/" + urllib.quote_plus(branch), {"accept": "application/vnd.github.v3.raw"})
     if build.status_code in [requests.codes.ok, requests.codes.not_modified]:
       return build
     return Response(status=requests.codes.not_found)
@@ -445,7 +454,7 @@ def setting_upload(user, branch):
 
 @app.route('/build/<user>/<branch>/<filename>')
 def config_json(user, branch, filename):
-    return get_github("repos/" + user + "/rcbuild.info-builds/contents/" + filename + "?ref=refs/heads/" + branch, {"accept": "application/vnd.github.v3.raw"})
+    return get_github("repos/" + user + "/rcbuild.info-builds/contents/" + filename + "?ref=refs/heads/" + urllib.quote_plus(branch), {"accept": "application/vnd.github.v3.raw"})
 
 @app.route('/partCategories.json')
 def part_categories():
