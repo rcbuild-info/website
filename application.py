@@ -1,6 +1,7 @@
 from cryptography.fernet import Fernet
 from flask import Flask, render_template, Response, abort, session, request, url_for, flash, redirect
 from flask.ext.github import GitHub, GitHubError
+from flask_sslify import SSLify
 from elasticsearch import Elasticsearch
 import os
 import os.path
@@ -16,6 +17,7 @@ import urlparse
 from hashlib import sha1
 
 application = app = Flask(__name__)
+sslify = SSLify(app)
 app.config['GITHUB_CLIENT_ID'] = os.environ['GITHUB_CLIENT_ID']
 app.config['GITHUB_CLIENT_SECRET'] = os.environ['GITHUB_CLIENT_SECRET']
 app.config['PROPAGATE_EXCEPTIONS'] = True
