@@ -168,8 +168,16 @@ def builds():
 def createbuild():
   return render_template('main.html')
 
-@app.route('/build/<username>/<repo>')
-def build(username, repo):
+@app.route('/edit/<username>/<repo>')
+def editbuild(username, repo):
+  return render_template('main.html')
+
+@app.route('/compare/<primaryUsername>/primaryBranch>/vs/<secondaryUsername>/<secondaryBranch>')
+def comparebuild(primaryUsername, primaryBranch, secondaryUsername, secondarBranch):
+  return render_template('main.html')
+
+@app.route('/build/<username>/<branch>')
+def build(username, branch):
     return render_template('main.html')
 
 def get_github(url, headers={}):

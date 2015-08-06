@@ -2,6 +2,8 @@ var alt = require("../alt");
 
 import PartActions from "../actions/part-actions";
 import PartSource from "../sources/part-source";
+import SiteActions from "../actions/site-actions";
+import SiteStore from "./site-store";
 
 class PartStore {
   constructor() {
@@ -17,17 +19,27 @@ class PartStore {
 
     this.registerAsync(PartSource);
     this.bindListeners({
-      handleLoadCategories: PartActions.loadCategories,
+      handleNavigateToPage: SiteActions.navigateToPage,
       handleLoadedCategories: PartActions.loadedCategories,
       handleLoadCategoriesFailed: PartActions.loadCategoriesFailed,
       handleLoadedPart: PartActions.loadedPart,
       handleLoadPartFailed: PartActions.loadPartFailed,
-      handleLoadIndices: PartActions.loadIndices,
       handleLoadedSupportedPartIndex: PartActions.loadedSupportedPartIndex,
       handleLoadSupportedPartIndexFailed: PartActions.loadSupportedPartIndexFailed,
       handleLoadedUnsupportedPartIndex: PartActions.loadedUnsupportedPartIndex,
       handleLoadUnsupportedPartIndexFailed: PartActions.loadUnsupportedPartIndexFailed
     });
+  }
+
+  handleNavigateToPage() {
+    this.waitFor(SiteStore);
+    let page = SiteStore.getState().page;
+    if (page === "build" || page === "editbuild") {
+      this.getInstance().loadCategories();
+    }
+    if (page === "editbuild") {
+      this.getInstance().loadSupportedPartIndex();
+    }
   }
 
   static expandParts(parts) {
@@ -50,10 +62,6 @@ class PartStore {
       }
     }
   }
-
-  handleLoadIndices() {
-    this.getInstance().loadSupportedPartIndex();
-  }
   handleLoadedSupportedPartIndex(response) {
     let parts = response.data;
     for(let category of Object.keys(parts)) {
@@ -73,9 +81,6 @@ class PartStore {
   }
   handleLoadUnsupportedPartIndexFailed(response) {
     console.log(response);
-  }
-  handleLoadCategories() {
-    this.getInstance().loadCategories();
   }
   handleLoadedCategories(response) {
     this.categories = response.data.categories;

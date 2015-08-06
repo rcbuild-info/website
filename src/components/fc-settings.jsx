@@ -19,7 +19,7 @@ export default class FlightControllerSettings extends React.Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    if (nextProps.primarySettings !== this.props.primarySettings) {
+    if (nextProps.primarySettings && nextProps.primarySettings !== this.props.primarySettings) {
       let cfCli = nextProps.primarySettings.cf_cli;
       if (cfCli instanceof Blob) {
         let reader = new FileReader();

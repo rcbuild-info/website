@@ -17,7 +17,7 @@ class BuildStore {
 
     this.exportAsync(BuildSource);
     this.bindListeners({
-      handleLoadBuild: BuildActions.loadBuild,
+      handleNavigateToPage: SiteActions.navigateToPage,
       handleLoadedBuild: BuildActions.loadedBuild,
       handleLoadBuildFailed: BuildActions.loadBuildFailed,
       handleCreateBuild: BuildActions.createBuild,
@@ -32,6 +32,16 @@ class BuildStore {
       handleLoadedSettings: BuildActions.loadedSettings,
       handleLoadSettingsFailed: BuildActions.loadSettingsFailed
     });
+  }
+  handleNavigateToPage() {
+    this.waitFor(SiteStore);
+    let state = SiteStore.getState();
+    if (state.primaryBuildVersion) {
+      this.getInstance().loadBuild(state.primaryBuildVersion);
+    }
+    if (state.secondaryBuildVersion) {
+      this.getInstance().loadBuild(state.secondaryBuildVersion);
+    }
   }
   loadParts(parts) {
     if (Array.isArray(parts)) {
@@ -50,7 +60,7 @@ class BuildStore {
     this.builds[key] = this.builds[SiteStore.getState().savedPrimaryBuild.key];
   }
   handleSetBuildPart(change) {
-    let build = this.builds[SiteStore.getState().primaryBuild.key];
+    let build = this.builds[SiteStore.getState().primaryBuildVersion.key];
     build.parts.config[change.category] = change.partIDs;
     this.loadParts(change.partIDs);
     build.state = "unsaved";
@@ -68,17 +78,21 @@ class BuildStore {
     }
   }
   handleSaveBuild() {
-    this.unsavedKey = SiteStore.getState().primaryBuild.key;
-    this.builds[this.unsavedKey].state = "saving";
-    this.savingKey = SiteStore.getState().savedPrimaryBuild.key;
-    this.getInstance().saveBuild(SiteStore.getState().primaryBuild,
-                                 this.builds[this.unsavedKey]);
+    // We optimistically update our build store because the site store will
+    // update before us to the @HEAD version.
+    let stagedKey = SiteStore.getState().primaryBuildVersion.key;
+    this.builds[stagedKey].state = "saving";
+    let headVersion = SiteStore.getState().savedPrimaryBuildVersion;
+    let headKey = headVersion.key;
+    let previousHeadKey = headKey + "~1";
+    this.builds[previousHeadKey] = this.builds[headKey];
+    this.builds[headKey] = this.builds[stagedKey];
+    this.getInstance().saveBuild(headVersion, this.builds[stagedKey]);
   }
-  handleSavedBuild() {
-    this.builds[this.savingKey] = this.builds[this.unsavedKey];
-    this.builds[this.savingKey].state = "exists";
-    this.savingKey = null;
-    this.unsavedKey = null;
+  handleSavedBuild(response) {
+    let key = response.config.buildVersion.key;
+    this.builds[key].state = "exists";
+    console.log("saved", key, this.builds[key]);
   }
   handleSaveBuildFailed(response) {
     this.builds[response.config.buildVersion.key].state = "save-failed";
@@ -102,6 +116,7 @@ class BuildStore {
       "parts": response.data,
       "settings": {"fc": undefined}
     };
+
     let config = response.data.config;
     for (let category of Object.keys(config)) {
       this.loadParts(config[category]);

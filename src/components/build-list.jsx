@@ -5,7 +5,6 @@ import BuildCard from "./build-card";
 export default class BuildList extends React.Component {
   constructor() {
     super();
-    console.log("buildlist");
     this.render = this.render.bind(this);
   }
 

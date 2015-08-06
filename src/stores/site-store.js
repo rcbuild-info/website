@@ -11,19 +11,19 @@ class SiteStore {
       console.log(err);
     });
 
+    // this.dispatcher.register(function (payload) { console.log("action", payload); });
+
     this.page = null;
-    this.primaryBuild = null;
-    this.secondaryBuild = null;
-    this.editingBuild = false;
-    this.partClassification = null;
+    this.primaryBuildVersion = null;
+    this.secondaryBuildVersion = null;
     this.loggedInUser = null;
+    this.savedPrimaryBuildVersion = null;
 
     this.bindListeners({
       logInUser: SiteActions.logInUser,
       navigateToPage: SiteActions.navigateToPage,
       editBuild: SiteActions.editBuild,
       discardBuild: SiteActions.discardBuild,
-      saveBuild: BuildActions.saveBuild,
       savedBuild: BuildActions.savedBuild
     });
   }
@@ -34,31 +34,28 @@ class SiteStore {
 
   navigateToPage(pageInfo) {
     this.page = pageInfo.page;
-    if (this.page === "build") {
-      this.primaryBuild = pageInfo.primaryBuild;
-      if (pageInfo.secondaryBuild) {
-        this.secondaryBuild = pageInfo.secondaryBuild;
+    if (pageInfo.page === "build" || pageInfo.page === "editbuild") {
+      if (this.savedPrimaryBuildVersion === null ||
+          this.savedPrimaryBuildVersion.key !== pageInfo.primaryBuildVersion.key) {
+        this.primaryBuildVersion = pageInfo.primaryBuildVersion;
       }
-    } else if (this.page === "parts") {
-      this.partClassification = pageInfo.partClassification;
+      if (pageInfo.page === "editbuild") {
+        this.editBuild();
+      } else if (pageInfo.secondaryBuild) {
+        this.secondaryBuildVersion = pageInfo.secondaryBuildVersion;
+      }
     }
   }
 
   editBuild() {
-    this.editingBuild = true;
-    this.savedPrimaryBuild = clone(this.primaryBuild);
-    this.primaryBuild.commit = "staged";
-    this.primaryBuild.key = this.primaryBuild.user + "/" + this.primaryBuild.branch + "@staged";
+    this.savedPrimaryBuildVersion = clone(this.primaryBuildVersion);
+    this.primaryBuildVersion.commit = "staged";
+    this.primaryBuildVersion.key = this.primaryBuildVersion.user + "/" + this.primaryBuildVersion.branch + "@staged";
   }
 
   discardBuild() {
-    this.editingBuild = false;
-    this.primaryBuild = this.savedPrimaryBuild;
-    this.savedPrimaryBuild = null;
-  }
-
-  saveBuild() {
-    this.editingBuild = false;
+    this.primaryBuildVersion = this.savedPrimaryBuildVersion;
+    this.savedPrimaryBuildVersion = null;
   }
 
   savedBuild() {

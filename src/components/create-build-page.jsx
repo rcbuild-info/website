@@ -12,7 +12,8 @@ export default class CreateBuildPage extends React.Component {
   }
 
   onClick() {
-    window.location.assign("/build/" + this.props.loggedInUser + "/" + this.refs.input.getValue().replace(/[\s/~\.\^:\?\*\[\\]+/g, "-"));
+    let branch = this.refs.input.getValue().replace(/[\s/~\.\^:\?\*\[\\]+/g, "-");
+    this.context.router.transitionTo("editbuild", {"user": this.props.loggedInUser, "branch": branch });
   }
 
   render() {
@@ -28,4 +29,7 @@ export default class CreateBuildPage extends React.Component {
 }
 CreateBuildPage.propTypes = {
   loggedInUser: React.PropTypes.string
+};
+CreateBuildPage.contextTypes = {
+  router: React.PropTypes.func
 };

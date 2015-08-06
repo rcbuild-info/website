@@ -17,7 +17,7 @@ export default {
       // this function checks in our local cache first
       // if the value is present it'll use that instead (optional).
       local(state, buildVersion) {
-        return state.builds[buildVersion.key] ? state.builds[buildVersion] : null;
+        return state.builds[buildVersion.key] ? state.builds[buildVersion.key] : null;
       },
 
       // here we setup some actions to handle our response

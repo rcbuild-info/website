@@ -1,8 +1,5 @@
 var alt = require("../alt");
 
-import BuildActions from "./build-actions";
-import PartActions from "./part-actions";
-
 class SiteActions {
   constructor() {
     this.generateActions("editBuild", "discardBuild");
@@ -12,15 +9,14 @@ class SiteActions {
     this.dispatch(user);
   }
 
-  navigateToPage(pageInfo) {
-    if (pageInfo.page === "build") {
-      PartActions.loadCategories();
-      BuildActions.loadBuild(pageInfo.primaryBuild);
-      if (pageInfo.editingBuild) {
-        PartActions.loadIndices();
-      } else if (pageInfo.secondaryBuild) {
-        BuildActions.loadBuild(pageInfo.secondaryBuild);
-      }
+  navigateToPage(routeInfo) {
+    let pageInfo = {};
+    pageInfo.page = routeInfo.routes[1].name;
+
+    if (pageInfo.page === "build" || pageInfo.page === "editbuild") {
+      pageInfo.primaryBuildVersion = {"user": routeInfo.params.user,
+                                      "branch": routeInfo.params.branch,
+                                      "key": routeInfo.params.user + "/" + routeInfo.params.branch + "@HEAD"};
     }
     this.dispatch(pageInfo);
   }

@@ -11,3 +11,6 @@ rcbuild.info.env
 .module-cache/
 parts-repo
 out/*
+
+*-pids.txt
+empty-gui.json

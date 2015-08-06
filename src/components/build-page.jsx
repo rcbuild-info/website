@@ -12,23 +12,84 @@ import BuildParts from "./build-parts";
 import SiteActions from "../actions/site-actions";
 import FlightControllerSettings from "./fc-settings";
 
+import BuildStore from "../stores/build-store";
+import PartStore from "../stores/part-store";
+import SiteStore from "../stores/site-store";
+
+import ButtonLink from "react-router-bootstrap/lib/ButtonLink";
+
 export default class BuildPage extends React.Component {
   constructor() {
     super();
     this.render = this.render.bind(this);
     this.onCreateBuild = this.onCreateBuild.bind(this);
     this.onShareDismiss = this.onShareDismiss.bind(this);
-    this.state = {"share": false};
+    this.onBuildChange = this.onBuildChange.bind(this);
+    this.onPartChange = this.onPartChange.bind(this);
+    this.onSiteChange = this.onSiteChange.bind(this);
+    this.onDiscardChanges = this.onDiscardChanges.bind(this);
+    this.lastBuildState = "";
+    this.state = {"editing": false,
+                  "share": false,
+                  "primaryBuildVersion": undefined,
+                  "primaryBuild": undefined,
+                  "partStore": undefined};
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.primaryBuild && nextProps.primaryBuild.state === "saving") {
-      this.setState({"share": true});
+  componentDidMount() {
+    BuildStore.listen(this.onBuildChange);
+    PartStore.listen(this.onPartChange);
+    SiteStore.listen(this.onSiteChange);
+
+    this.onSiteChange(SiteStore.getState());
+    this.onPartChange(PartStore.getState());
+    this.onBuildChange(BuildStore.getState());
+  }
+
+  componentWillUnmount() {
+    BuildStore.unlisten(this.onBuildChange);
+    PartStore.unlisten(this.onPartChange);
+    SiteStore.unlisten(this.onSiteChange);
+  }
+
+  // These three functions sync our internal state to the backing stores.
+  onBuildChange(state) {
+    if (this.state.primaryBuildVersion) {
+      let primaryBuild = state.builds[this.state.primaryBuildVersion.key];
+      let share = this.state.share ||
+                  (primaryBuild &&
+                   primaryBuild.state === "exists" &&
+                   this.lastBuildState === "saving");
+      // Copy the build state over because the primaryBuild object can actually
+      // the same one we already have with the updated state.
+      if (primaryBuild) {
+        this.lastBuildState = primaryBuild.state;
+      }
+      this.setState({"primaryBuild": primaryBuild,
+                     "share": share});
     }
+  }
+  onPartChange(state) {
+    this.setState({"partStore": state});
+  }
+  onSiteChange(state) {
+    let ownerLoggedIn = false;
+    let primaryBuild;
+    if (state.primaryBuildVersion) {
+      ownerLoggedIn = state.loggedInUser === state.primaryBuildVersion.user;
+      primaryBuild = BuildStore.getState().builds[state.primaryBuildVersion.key];
+      if (primaryBuild) {
+        this.lastBuildState = primaryBuild.state;
+      }
+    }
+    this.setState({"editing": state.page === "editbuild",
+                   "ownerLoggedIn": ownerLoggedIn,
+                   "primaryBuildVersion": state.primaryBuildVersion,
+                   "primaryBuild": primaryBuild});
   }
 
   onCreateBuild() {
-    BuildActions.createBuild(this.props.primaryBuildVersion);
+    BuildActions.createBuild(this.state.primaryBuildVersion);
   }
 
   onSaveBuild() {
@@ -44,33 +105,32 @@ export default class BuildPage extends React.Component {
   }
 
   render() {
-    if (this.props.primaryBuild === undefined) {
+    if (this.state.primaryBuild === undefined) {
       return null;
     }
 
-    if (this.props.primaryBuild.state === "exists" ||
-        this.props.primaryBuild.state === "unsaved" ||
-        this.props.primaryBuild.state === "saving") {
+    if (this.state.primaryBuild.state === "exists" ||
+        this.state.primaryBuild.state === "unsaved" ||
+        this.state.primaryBuild.state === "saving") {
       let banner = null;
 
-      if (this.props.editing) {
+      if (this.state.editing) {
         banner = (<Row><Col md={6}>
                       <Panel>
                         <ButtonGroup fill justified>
-                          <Button bsStyle="success"
-                                  disabled={this.props.primaryBuild.state !== "unsaved"}
-                                  href="#"
-                                  onClick={this.onSaveBuild}>Save changes</Button>
-                          <Button bsStyle="danger" href="#" onClick={this.onDiscardChanges}>Discard Changes</Button>
+                          <ButtonLink bsStyle="success"
+                                  disabled={this.state.primaryBuild.state !== "unsaved"}
+                                  onClick={this.onSaveBuild} params={{"user": this.state.primaryBuildVersion.user, "branch": this.state.primaryBuildVersion.branch}} to="build">Save changes</ButtonLink>
+                          <ButtonLink bsStyle="danger" onClick={this.onDiscardChanges} params={{"user": this.state.primaryBuildVersion.user, "branch": this.state.primaryBuildVersion.branch}} to="build">Discard Changes</ButtonLink>
                         </ButtonGroup>
                       </Panel>
                     </Col>
                     </Row>);
-      } else if (this.props.primaryBuild.state === "saving") {
+      } else if (this.state.primaryBuild.state === "saving") {
         banner = (<Row><Col md={12}><Alert bsStyle="info" fill><strong>Saving</strong> Hold on, your build is saving.</Alert>
                   </Col>
                   </Row>);
-      } else if (this.props.primaryBuild.state === "save-failed") {
+      } else if (this.state.primaryBuild.state === "save-failed") {
         banner = (<Row><Col md={12}><Alert bsStyle="danger" fill><strong>Save failed!</strong> This is currently unhandled. :-(</Alert>
                   </Col>
                   </Row>);
@@ -83,26 +143,26 @@ export default class BuildPage extends React.Component {
           <Row>
 
                 <Col md={6}>
-                  <BuildParts editing={this.props.editing} fill
-                              ownerLoggedIn={this.props.ownerLoggedIn}
-                              partStore={this.props.partStore}
-                              parts={this.props.primaryBuild.parts}/>
+                  <BuildParts editing={this.state.editing} fill
+                              ownerLoggedIn={this.state.ownerLoggedIn}
+                              partStore={this.state.partStore}
+                              parts={this.state.primaryBuild.parts}/>
                 </Col>
                 <Col md={6}>
-                  <FlightControllerSettings editing={this.props.editing}
-                                            primarySettings={this.props.primaryBuild.settings.fc}/>
+                  <FlightControllerSettings editing={this.state.editing}
+                                            primarySettings={this.state.primaryBuild.settings.fc}/>
                 </Col>
               </Row>
                 {banner}</div>);
-    } else if (this.props.primaryBuild.state === "does-not-exist") {
-      if (this.props.ownerLoggedIn) {
+    } else if (this.state.primaryBuild.state === "does-not-exist") {
+      if (this.state.ownerLoggedIn) {
         return (<Row>
                   <Col md={12}>
                     <Panel>
-                      Are you sure you want to create a build called "{ this.props.primaryBuildVersion.branch }"?<hr/>
+                      Are you sure you want to create a build called "{ this.state.primaryBuildVersion.branch }"?<hr/>
                       <Button bsStyle="success" onClick={ this.onCreateBuild }>Yes</Button>
                       &nbsp;
-                      <Button bsStyle="danger" href="/createbuild">No</Button>
+                      <ButtonLink bsStyle="danger" to="createbuild">No</ButtonLink>
                     </Panel>
                   </Col>
                 </Row>);
@@ -121,9 +181,8 @@ export default class BuildPage extends React.Component {
   }
 }
 BuildPage.propTypes = {
-  editing: React.PropTypes.bool.isRequired,
-  ownerLoggedIn: React.PropTypes.bool.isRequired,
-  partStore: React.PropTypes.object,
-  primaryBuild: React.PropTypes.object, // This is a wrapper object which includes status, parts and settings.
-  primaryBuildVersion: React.PropTypes.object
+  editing: React.PropTypes.bool
+};
+BuildPage.contextTypes = {
+  router: React.PropTypes.func
 };

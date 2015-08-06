@@ -15,7 +15,8 @@ export default class BuildParts extends React.Component {
   }
 
   onPartChange(category, partIDs) {
-    BuildActions.setBuildPart({"category": category,
+    BuildActions.setBuildPart({"buildKey": this.props.buildKey,
+                               "category": category,
                                "partIDs": partIDs});
   }
 
@@ -53,6 +54,7 @@ export default class BuildParts extends React.Component {
   }
 }
 BuildParts.propTypes = {
+  buildKey: React.PropTypes.string,
   editing: React.PropTypes.bool.isRequired,
   ownerLoggedIn: React.PropTypes.bool,
   partStore: React.PropTypes.object,
