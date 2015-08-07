@@ -6,6 +6,7 @@ import Button from "react-bootstrap/lib/Button";
 import Row from "react-bootstrap/lib/Row";
 import Col from "react-bootstrap/lib/Col";
 import Panel from "react-bootstrap/lib/Panel";
+import PageHeader from "react-bootstrap/lib/PageHeader";
 
 import BuildActions from "../actions/build-actions";
 import BuildParts from "./build-parts";
@@ -55,9 +56,11 @@ export default class BuildPage extends React.Component {
   // These three functions sync our internal state to the backing stores.
   onBuildChange(state) {
     let primaryBuild;
+    let ownerLoggedIn = false;
     let share = this.state.share;
-    if (this.state.primaryBuildVersion) {
-      primaryBuild = state.builds[this.state.primaryBuildVersion.key];
+    if (state.primaryBuildVersion) {
+      ownerLoggedIn = state.loggedInUser === state.primaryBuildVersion.user;
+      primaryBuild = state.builds[state.primaryBuildVersion.key];
       share = this.state.share ||
               (primaryBuild &&
                primaryBuild.state === "exists" &&
@@ -69,36 +72,21 @@ export default class BuildPage extends React.Component {
       }
     }
     let secondaryBuild;
-    if (this.state.secondaryBuildVersion) {
-      secondaryBuild = state.builds[this.state.secondaryBuildVersion.key];
+    if (state.secondaryBuildVersion) {
+      secondaryBuild = state.builds[state.secondaryBuildVersion.key];
     }
-    this.setState({"primaryBuild": primaryBuild,
+    this.setState({"ownerLoggedIn": ownerLoggedIn,
+                   "primaryBuild": primaryBuild,
+                   "primaryBuildVersion": state.primaryBuildVersion,
                    "secondaryBuild": secondaryBuild,
+                   "secondaryBuildVersion": state.secondaryBuildVersion,
                    "share": share});
   }
   onPartChange(state) {
     this.setState({"partStore": state});
   }
   onSiteChange(state) {
-    let ownerLoggedIn = false;
-    let primaryBuild;
-    if (state.primaryBuildVersion) {
-      ownerLoggedIn = state.loggedInUser === state.primaryBuildVersion.user;
-      primaryBuild = BuildStore.getState().builds[state.primaryBuildVersion.key];
-      if (primaryBuild) {
-        this.lastBuildState = primaryBuild.state;
-      }
-    }
-    let secondaryBuild;
-    if (state.secondaryBuildVersion) {
-      secondaryBuild = BuildStore.getState().builds[state.primaryBuildVersion.key];
-    }
-    this.setState({"editing": state.page === "editbuild",
-                   "ownerLoggedIn": ownerLoggedIn,
-                   "primaryBuildVersion": state.primaryBuildVersion,
-                   "primaryBuild": primaryBuild,
-                   "secondaryBuildVersion": state.secondaryBuildVersion,
-                   "secondaryBuild": secondaryBuild});
+    this.setState({"editing": state.page === "editbuild"});
   }
 
   onCreateBuild() {
@@ -110,7 +98,7 @@ export default class BuildPage extends React.Component {
   }
 
   onDiscardChanges() {
-    SiteActions.discardBuild();
+    BuildActions.discardBuild();
   }
 
   onShareDismiss() {
@@ -121,6 +109,9 @@ export default class BuildPage extends React.Component {
     if (this.state.primaryBuild === undefined) {
       return null;
     }
+
+    // TODO(tannewt): Link to all of the builds by a user here.
+    let primaryBuildName = this.state.primaryBuildVersion.user + "/" + this.state.primaryBuildVersion.branch;
 
     if (this.state.primaryBuild.state === "exists" ||
         this.state.primaryBuild.state === "unsaved" ||
@@ -158,11 +149,20 @@ export default class BuildPage extends React.Component {
       if (this.state.primaryBuild) {
         primaryParts = this.state.primaryBuild.parts;
       }
+      let header = (<PageHeader>{primaryBuildName}</PageHeader>);
       if (this.state.secondaryBuild) {
         secondaryParts = this.state.secondaryBuild.parts;
         secondaryFcSettings = this.state.secondaryBuild.settings.fc;
+        let secondaryBuildName = this.state.secondaryBuildVersion.user + "/" + this.state.secondaryBuildVersion.branch;
+        header = (<PageHeader>{primaryBuildName}<small> vs {secondaryBuildName}</small></PageHeader>);
       }
-      return (<div>{banner}
+      return (<div>
+                <Row>
+                  <Col md={12}>
+                    { header }
+                  </Col>
+                </Row>
+                {banner}
           <Row>
                 <Col md={6}>
                   <BuildParts editing={this.state.editing} fill
@@ -184,6 +184,9 @@ export default class BuildPage extends React.Component {
       if (this.state.ownerLoggedIn) {
         return (<Row>
                   <Col md={12}>
+                    <PageHeader>{primaryBuildName}</PageHeader>
+                  </Col>
+                  <Col md={12}>
                     <Panel>
                       Are you sure you want to create a build called "{ this.state.primaryBuildVersion.branch }"?<hr/>
                       <Button bsStyle="success" onClick={ this.onCreateBuild }>Yes</Button>
@@ -194,6 +197,9 @@ export default class BuildPage extends React.Component {
                 </Row>);
       } else {
         return (<Row>
+                  <Col md={12}>
+                    <PageHeader>{primaryBuildName}</PageHeader>
+                  </Col>
                   <Col md={12}>
                     <Panel header="Oops!">
                       It looks like this build does not exist!

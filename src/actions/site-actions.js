@@ -1,10 +1,6 @@
 var alt = require("../alt");
 
 class SiteActions {
-  constructor() {
-    this.generateActions("editBuild", "discardBuild");
-  }
-
   logInUser(user) {
     this.dispatch(user);
   }

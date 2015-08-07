@@ -5,7 +5,6 @@ import SiteActions from "../actions/site-actions";
 import BuildSource from "../sources/build-source";
 
 import PartStore from "./part-store";
-import SiteStore from "./site-store";
 
 class BuildStore {
   constructor() {
@@ -13,34 +12,50 @@ class BuildStore {
       console.log(err);
     });
 
+    this.primaryBuildVersion = null;
+    this.secondaryBuildVersion = null;
+    this.savedPrimaryBuildVersion = null;
     this.builds = {};
 
     this.exportAsync(BuildSource);
     this.bindListeners({
-      handleNavigateToPage: SiteActions.navigateToPage,
-      handleLoadedBuild: BuildActions.loadedBuild,
-      handleLoadBuildFailed: BuildActions.loadBuildFailed,
-      handleCreateBuild: BuildActions.createBuild,
-      handleCreatedBuild: BuildActions.createdBuild,
-      handleCreateBuildFailed: BuildActions.createBuildFailed,
-      handleSaveBuild: BuildActions.saveBuild,
-      handleSavedBuild: BuildActions.savedBuild,
-      handleSaveBuildFailed: BuildActions.saveBuildFailed,
-      handleSetBuildPart: BuildActions.setBuildPart,
-      handleEditBuild: SiteActions.editBuild,
-      handleSetSettings: BuildActions.setSettings,
-      handleLoadedSettings: BuildActions.loadedSettings,
-      handleLoadSettingsFailed: BuildActions.loadSettingsFailed
+      navigateToPage: SiteActions.navigateToPage,
+      loadedBuild: BuildActions.loadedBuild,
+      loadBuildFailed: BuildActions.loadBuildFailed,
+      createBuild: BuildActions.createBuild,
+      createdBuild: BuildActions.createdBuild,
+      createBuildFailed: BuildActions.createBuildFailed,
+      saveBuild: BuildActions.saveBuild,
+      savedBuild: BuildActions.savedBuild,
+      saveBuildFailed: BuildActions.saveBuildFailed,
+      setBuildPart: BuildActions.setBuildPart,
+      editBuild: BuildActions.editBuild,
+      discardBuild: BuildActions.editBuild,
+      setSettings: BuildActions.setSettings,
+      loadedSettings: BuildActions.loadedSettings,
+      loadSettingsFailed: BuildActions.loadSettingsFailed
     });
   }
-  handleNavigateToPage() {
-    this.waitFor(SiteStore);
-    let state = SiteStore.getState();
-    if (state.primaryBuildVersion) {
-      this.getInstance().loadBuild(state.primaryBuildVersion);
+  navigateToPage(pageInfo) {
+    if (pageInfo.page === "build" || pageInfo.page === "editbuild" || pageInfo.page === "compare") {
+      if (this.savedPrimaryBuildVersion === null ||
+          this.savedPrimaryBuildVersion.key !== pageInfo.primaryBuildVersion.key) {
+        this.primaryBuildVersion = pageInfo.primaryBuildVersion;
+      }
+      if (pageInfo.page === "editbuild") {
+        this.editBuild();
+      }
+      if (pageInfo.page === "compare") {
+        this.secondaryBuildVersion = pageInfo.secondaryBuildVersion;
+      } else {
+        this.secondaryBuildVersion = null;
+      }
     }
-    if (state.secondaryBuildVersion) {
-      this.getInstance().loadBuild(state.secondaryBuildVersion);
+    if (this.primaryBuildVersion) {
+      this.getInstance().loadBuild(this.primaryBuildVersion);
+    }
+    if (this.secondaryBuildVersion) {
+      this.getInstance().loadBuild(this.secondaryBuildVersion);
     }
   }
   loadParts(parts) {
@@ -54,20 +69,21 @@ class BuildStore {
       PartStore.loadPart(parts);
     }
   }
-  handleEditBuild() {
-    this.waitFor(SiteStore.dispatchToken);
-    let key = SiteStore.getState().primaryBuild.key;
-    this.builds[key] = this.builds[SiteStore.getState().savedPrimaryBuild.key];
+  editBuild() {
+    this.savedPrimaryBuildVersion = clone(this.primaryBuildVersion);
+    this.primaryBuildVersion.commit = "staged";
+    this.primaryBuildVersion.key = this.primaryBuildVersion.user + "/" + this.primaryBuildVersion.branch + "@staged";
+    this.builds[this.primaryBuildVersion] = this.builds[this.savedPrimaryBuildVersion.key];
   }
-  handleSetBuildPart(change) {
-    let build = this.builds[SiteStore.getState().primaryBuildVersion.key];
+  setBuildPart(change) {
+    let build = this.builds[this.primaryBuildVersion.key];
     build.parts.config[change.category] = change.partIDs;
     this.loadParts(change.partIDs);
     build.state = "unsaved";
     build.dirty.parts = true;
   }
-  handleSetSettings(settings) {
-    let build = this.builds[SiteStore.getState().primaryBuild.key];
+  setSettings(settings) {
+    let build = this.builds[this.primaryBuildVersion.key];
     if (!build.dirty.settings) {
       build.dirty.settings = {};
     }
@@ -77,38 +93,36 @@ class BuildStore {
       build.dirty.settings[key] = true;
     }
   }
-  handleSaveBuild() {
-    // We optimistically update our build store because the site store will
-    // update before us to the @HEAD version.
-    let stagedKey = SiteStore.getState().primaryBuildVersion.key;
-    this.builds[stagedKey].state = "saving";
-    let headVersion = SiteStore.getState().savedPrimaryBuildVersion;
-    let headKey = headVersion.key;
-    let previousHeadKey = headKey + "~1";
-    this.builds[previousHeadKey] = this.builds[headKey];
-    this.builds[headKey] = this.builds[stagedKey];
+  saveBuild() {
+    this.builds[this.primaryBuildVersion.key].state = "saving";
     this.getInstance().saveBuild(headVersion, this.builds[stagedKey]);
   }
-  handleSavedBuild(response) {
+  discardBuild() {
+    this.primaryBuildVersion = this.savedPrimaryBuildVersion;
+    this.savedPrimaryBuildVersion = null;
+  }
+  savedBuild(response) {
+    this.builds[this.savedPrimaryBuildVersion.key] = this.builds[this.primaryBuildVersion.key];
+    this.discardBuild();
     let key = response.config.buildVersion.key;
     this.builds[key].state = "exists";
   }
-  handleSaveBuildFailed(response) {
+  saveBuildFailed(response) {
     this.builds[response.config.buildVersion.key].state = "save-failed";
   }
-  handleCreateBuild(buildVersion) {
+  createBuild(buildVersion) {
     this.getInstance().createBuild(buildVersion);
   }
-  handleCreatedBuild(response) {
+  createdBuild(response) {
     this.getInstance().loadBuild(response.config.buildVersion);
   }
-  handleCreateBuildFailed(response) {
+  createBuildFailed(response) {
     this.builds[response.config.buildVersion.key].state = "create-failed";
   }
-  handleLoadBuild(buildVersion) {
+  loadBuild(buildVersion) {
     this.getInstance().loadBuild(buildVersion);
   }
-  handleLoadedBuild(response) {
+  loadedBuild(response) {
     this.builds[response.config.buildVersion.key] = {
       "state": "exists",
       "dirty": {},
@@ -124,14 +138,14 @@ class BuildStore {
                                          "buildVersion": response.config.buildVersion},
                                         "cleanflight_cli_dump.txt");
   }
-  handleLoadBuildFailed(response) {
+  loadBuildFailed(response) {
     if (response.status === 404) {
       this.builds[response.config.buildVersion.key] = {
         "state": "does-not-exist"
       };
     }
   }
-  handleLoadedSettings(response) {
+  loadedSettings(response) {
     let settings = this.builds[response.config.settingInfo.buildVersion.key].settings;
     let path = response.config.settingInfo.path;
     for (let i = 0; i < path.length - 1; i++) {
@@ -142,7 +156,7 @@ class BuildStore {
     }
     settings[path[path.length - 1]] = response.data;
   }
-  handleLoadSettingsFailed(response) {
+  loadSettingsFailed(response) {
     console.log(response);
   }
 }
