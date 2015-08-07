@@ -2,13 +2,14 @@ from cryptography.fernet import Fernet
 from flask import Flask, render_template, Response, abort, session, request, url_for, flash, redirect
 from flask.ext.github import GitHub, GitHubError
 from flask_sslify import SSLify
-from elasticsearch import Elasticsearch
+import elasticsearch
 import os
 import os.path
 
 import pylru
 
 import base64
+import copy
 import requests
 import json
 import hmac
@@ -27,7 +28,7 @@ app.secret_key = os.environ['SESSION_SECRET_KEY']
 FERNET_KEY = os.environ['FERNET_KEY']
 f = Fernet(FERNET_KEY)
 
-es = Elasticsearch([os.environ['ES_HOST']])
+es = elasticsearch.Elasticsearch([os.environ['ES_HOST']])
 
 github_cache = pylru.lrucache(64)
 
@@ -136,30 +137,108 @@ def updateBuildIndex():
     request_data = request.get_data()
     push_info = json.loads(request_data)
     user = push_info["repository"]["owner"]["name"]
-    res = es.get(index='private', doc_type='githubsecret', id=user)
-    if not res["found"]:
-      abort(403)
-    h = hmac.new(str(res["_source"]["secret"]), request.data, sha1)
-    if not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
-      abort(403)
+    if not app.debug:
+      res = es.get(index='private', doc_type='githubsecret', id=user)
+      if not res["found"]:
+        abort(403)
+      h = hmac.new(str(res["_source"]["secret"]), request.data, sha1)
+      if not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+        abort(403)
 
     branch = push_info["ref"][len("refs/heads/"):]
 
+    if user == "tannewt" and branch.startswith(("test", "Test")):
+      return Response('ok')
+
+    if branch.startswith("patch"):
+      return Response('ok')
+
+    res = None
+    try:
+      res = es.get(index='builds', doc_type='buildsnapshot', id=push_info["before"])
+    except elasticsearch.TransportError as e:
+      print(e)
+      pass
+    current_snapshot = None
+    current_doc_id = {"_index": "builds", "_type": "buildsnapshot", "_id": push_info["before"]}
+    updating = False
+    if res and res["found"]:
+      current_snapshot = res["_source"]
+      updating = True
+
+    previous_snapshot = None
+    previous_doc_id = None
+
+    # We do a bulk update to the index to minimize update cost.
+    actions = []
     for commit in push_info["commits"]:
-      if "build.json" in commit["modified"]:
+      # We bump the snapshot if settings or parts change but not other things
+      # such as flights. Flights will only impact snapshot stats, not structure.
+      if (current_snapshot == None or
+          "build.json" in commit["modified"] or
+          "cleanflight_cli_dump.txt" in commit["modified"] or
+          "cleanflight_gui_backup.txt" in commit["modified"] or
+          "cleanflight_cli_dump.txt" in commit["added"] or
+          "cleanflight_gui_backup.txt" in commit["added"]):
+        # Finalize the previous snapshot.
+        if previous_snapshot:
+          actions.append({"index": previous_doc_id})
+          actions.append(previous_snapshot)
+        previous_snapshot = current_snapshot
+        previous_doc_id = copy.copy(current_doc_id)
+        if previous_snapshot:
+          previous_snapshot["next_snapshot"] = commit["id"]
+
+        # Create a new snapshot.
         r = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + commit["id"], headers={"accept": "application/vnd.github.v3.raw"})
         if r.status_code != requests.codes.ok:
           continue
         build = json.loads(r.text)
-        snapshot = {
+        current_snapshot = {
           "timestamp": commit["timestamp"],
           "user": user,
           "branch": branch,
-          "build": build
+          "build": build,
+          "previous_snapshot": previous_doc_id["_id"],
+          "commits": [],
+          "next_snapshot": None
         }
-        res = es.index(index='public', doc_type='buildsnapshot', id=commit["id"], body=snapshot)
-        if not res["created"] and res["_version"] < 1:
-          return Response(status=requests.codes.server_error)
+      elif updating:
+        # The id of a snapshot is the last commit so we delete the old current
+        # doc when a commit is added and load the previous snapshot so we can
+        # update its next.
+        actions.append({"delete": current_doc_id})
+
+        if "previous_snapshot" in current_snapshot:
+          previous_doc_id = {"_index": "builds", "_type": "buildsnapshot", "_id": current_snapshot["previous_snapshot"]}
+          res = None
+          try:
+            res = es.get(index='builds', doc_type='buildsnapshot', id=previous_doc_id["_id"])
+          except elasticsearch.TransportError as e:
+            print(e)
+            pass
+          if res and res["found"]:
+            previous_snapshot = res["_source"]
+          else:
+            previous_doc_id = None
+      if previous_snapshot:
+        previous_snapshot["next_snapshot"] = commit["id"]
+      if current_snapshot:
+        current_snapshot["commits"].append(commit["id"])
+        current_snapshot["timestamp"] = commit["timestamp"]
+        current_doc_id["_id"] = commit["id"]
+      updating = False
+
+    if previous_snapshot:
+      actions.append({"index": previous_doc_id})
+      actions.append(previous_snapshot)
+    if current_snapshot:
+      actions.append({"index": current_doc_id})
+      actions.append(current_snapshot)
+
+    res = es.bulk(index='builds', doc_type='buildsnapshot', body=actions)
+    print(res)
+
   return Response('ok')
 
 @app.route('/builds')
