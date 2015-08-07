@@ -54,20 +54,27 @@ export default class BuildPage extends React.Component {
 
   // These three functions sync our internal state to the backing stores.
   onBuildChange(state) {
+    let primaryBuild;
+    let share = this.state.share;
     if (this.state.primaryBuildVersion) {
-      let primaryBuild = state.builds[this.state.primaryBuildVersion.key];
-      let share = this.state.share ||
-                  (primaryBuild &&
-                   primaryBuild.state === "exists" &&
-                   this.lastBuildState === "saving");
+      primaryBuild = state.builds[this.state.primaryBuildVersion.key];
+      share = this.state.share ||
+              (primaryBuild &&
+               primaryBuild.state === "exists" &&
+               this.lastBuildState === "saving");
       // Copy the build state over because the primaryBuild object can actually
       // the same one we already have with the updated state.
       if (primaryBuild) {
         this.lastBuildState = primaryBuild.state;
       }
-      this.setState({"primaryBuild": primaryBuild,
-                     "share": share});
     }
+    let secondaryBuild;
+    if (this.state.secondaryBuildVersion) {
+      secondaryBuild = state.builds[this.state.secondaryBuildVersion.key];
+    }
+    this.setState({"primaryBuild": primaryBuild,
+                   "secondaryBuild": secondaryBuild,
+                   "share": share});
   }
   onPartChange(state) {
     this.setState({"partStore": state});
@@ -82,10 +89,16 @@ export default class BuildPage extends React.Component {
         this.lastBuildState = primaryBuild.state;
       }
     }
+    let secondaryBuild;
+    if (state.secondaryBuildVersion) {
+      secondaryBuild = BuildStore.getState().builds[state.primaryBuildVersion.key];
+    }
     this.setState({"editing": state.page === "editbuild",
                    "ownerLoggedIn": ownerLoggedIn,
                    "primaryBuildVersion": state.primaryBuildVersion,
-                   "primaryBuild": primaryBuild});
+                   "primaryBuild": primaryBuild,
+                   "secondaryBuildVersion": state.secondaryBuildVersion,
+                   "secondaryBuild": secondaryBuild});
   }
 
   onCreateBuild() {
@@ -139,18 +152,31 @@ export default class BuildPage extends React.Component {
         </Col>
         </Row>);
       }
+      let primaryParts;
+      let secondaryParts;
+      let secondaryFcSettings;
+      if (this.state.primaryBuild) {
+        primaryParts = this.state.primaryBuild.parts;
+      }
+      if (this.state.secondaryBuild) {
+        secondaryParts = this.state.secondaryBuild.parts;
+        secondaryFcSettings = this.state.secondaryBuild.settings.fc;
+      }
       return (<div>{banner}
           <Row>
-
                 <Col md={6}>
                   <BuildParts editing={this.state.editing} fill
                               ownerLoggedIn={this.state.ownerLoggedIn}
                               partStore={this.state.partStore}
-                              parts={this.state.primaryBuild.parts}/>
+                              primaryParts={primaryParts}
+                              secondaryParts={secondaryParts}/>
                 </Col>
                 <Col md={6}>
                   <FlightControllerSettings editing={this.state.editing}
-                                            primarySettings={this.state.primaryBuild.settings.fc}/>
+                                            primaryParts={primaryParts}
+                                            primarySettings={this.state.primaryBuild.settings.fc}
+                                            secondaryParts={secondaryParts}
+                                            secondarySettings={secondaryFcSettings}/>
                 </Col>
               </Row>
                 {banner}</div>);

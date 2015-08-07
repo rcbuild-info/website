@@ -34,7 +34,7 @@ class PartStore {
   handleNavigateToPage() {
     this.waitFor(SiteStore);
     let page = SiteStore.getState().page;
-    if (page === "build" || page === "editbuild") {
+    if (page === "build" || page === "editbuild" || page === "compare") {
       this.getInstance().loadCategories();
     }
     if (page === "editbuild") {

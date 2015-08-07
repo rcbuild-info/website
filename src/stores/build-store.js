@@ -92,7 +92,6 @@ class BuildStore {
   handleSavedBuild(response) {
     let key = response.config.buildVersion.key;
     this.builds[key].state = "exists";
-    console.log("saved", key, this.builds[key]);
   }
   handleSaveBuildFailed(response) {
     this.builds[response.config.buildVersion.key].state = "save-failed";

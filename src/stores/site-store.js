@@ -11,8 +11,6 @@ class SiteStore {
       console.log(err);
     });
 
-    // this.dispatcher.register(function (payload) { console.log("action", payload); });
-
     this.page = null;
     this.primaryBuildVersion = null;
     this.secondaryBuildVersion = null;
@@ -34,14 +32,15 @@ class SiteStore {
 
   navigateToPage(pageInfo) {
     this.page = pageInfo.page;
-    if (pageInfo.page === "build" || pageInfo.page === "editbuild") {
+    if (pageInfo.page === "build" || pageInfo.page === "editbuild" || pageInfo.page === "compare") {
       if (this.savedPrimaryBuildVersion === null ||
           this.savedPrimaryBuildVersion.key !== pageInfo.primaryBuildVersion.key) {
         this.primaryBuildVersion = pageInfo.primaryBuildVersion;
       }
       if (pageInfo.page === "editbuild") {
         this.editBuild();
-      } else if (pageInfo.secondaryBuild) {
+      }
+      if (pageInfo.page === "compare") {
         this.secondaryBuildVersion = pageInfo.secondaryBuildVersion;
       }
     }

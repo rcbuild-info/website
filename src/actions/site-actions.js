@@ -18,6 +18,14 @@ class SiteActions {
                                       "branch": routeInfo.params.branch,
                                       "key": routeInfo.params.user + "/" + routeInfo.params.branch + "@HEAD"};
     }
+    if (pageInfo.page === "compare") {
+      pageInfo.primaryBuildVersion = {"user": routeInfo.params.primaryUser,
+                                      "branch": routeInfo.params.primaryBranch,
+                                      "key": routeInfo.params.primaryUser + "/" + routeInfo.params.primaryBranch + "@HEAD"};
+      pageInfo.secondaryBuildVersion = {"user": routeInfo.params.secondaryUser,
+                                        "branch": routeInfo.params.secondaryBranch,
+                                        "key": routeInfo.params.secondaryUser + "/" + routeInfo.params.secondaryBranch + "@HEAD"};
+    }
     this.dispatch(pageInfo);
   }
 }

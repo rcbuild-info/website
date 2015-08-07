@@ -21,6 +21,7 @@ var routes = (
     <Route handler={BuildList} name="builds" path="builds" />
     <Route handler={BuildPage} name="build" path="build/:user/:branch" />
     <Route handler={BuildPage} name="editbuild" path="edit/:user/:branch" />
+    <Route handler={BuildPage} name="compare" path="/compare/:primaryUser/:primaryBranch/vs/:secondaryUser/:secondaryBranch" />
     <Route handler={SupportedParts} name="supportedparts" path="parts/supported" />
     <Route handler={AllParts} name="allparts" path="parts/all" />
   </Route>);

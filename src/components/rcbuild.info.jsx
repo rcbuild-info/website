@@ -90,7 +90,7 @@ export default class RCBuildInfo extends React.Component {
           <hr/>
           <Row>
             <Col xs={12}>
-              <div className="footer">RCBuild.Info is a participant in the Amazon Services LLC Associates Program, an affiliate advertising program designed to provide a means for sites to earn advertising fees by advertising and linking to amazon.com.</div>
+              Site by <a href="http://tannewt.org">tannewt</a>. Code on <a href="https://github.com/rcbuild-info/website">GitHub</a>. <span className="disclaimer">RCBuild.Info is a participant in the Amazon Services LLC Associates Program, an affiliate advertising program designed to provide a means for sites to earn advertising fees by advertising and linking to amazon.com.</span>
             </Col>
           </Row>
         </Grid>

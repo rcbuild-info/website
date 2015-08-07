@@ -15,32 +15,36 @@ export default class BuildParts extends React.Component {
   }
 
   onPartChange(category, partIDs) {
-    BuildActions.setBuildPart({"buildKey": this.props.buildKey,
-                               "category": category,
+    BuildActions.setBuildPart({"category": category,
                                "partIDs": partIDs});
   }
 
   render() {
     var parts = [];
-    if (this.props.partStore.categories) {
-      var partCategories = Object.keys(this.props.parts.config);
+    if (this.props.partStore.categories && this.props.primaryParts) {
+      var partCategories = Object.keys(this.props.primaryParts.config);
       partCategories.sort(function(a, b) { return this.props.partStore.categories[a].order - this.props.partStore.categories[b].order; }.bind(this));
       for (var i in partCategories) {
         var category = partCategories[i];
         var part;
         if (!this.props.editing) {
-          part = (<Part key={category + "-" + this.props.parts.config[category]}
+          let secondaryParts;
+          if (this.props.secondaryParts) {
+            secondaryParts = this.props.secondaryParts.config[category];
+          }
+          part = (<Part key={category + "-" + this.props.primaryParts.config[category]}
                         model={this.props.partStore.categories[category]}
                         partStore={this.props.partStore}
-                        parts={this.props.parts.config[category]}/>);
+                        primaryParts={this.props.primaryParts.config[category]}
+                        secondaryParts={ secondaryParts }/>);
         } else {
           let supportedPartsInCategory = {};
           if (this.props.partStore.supportedParts[category]) {
             supportedPartsInCategory = this.props.partStore.supportedParts[category];
           }
           part = (<PartEntry categoryID={category}
-                             id={this.props.parts.config[category]}
-                             key={category + "-" + this.props.parts.config[category]}
+                             id={this.props.primaryParts.config[category]}
+                             key={category + "-" + this.props.primaryParts.config[category]}
                              model={this.props.partStore.categories[category]}
                              onChange={this.onPartChange}
                              supportedParts={supportedPartsInCategory}
@@ -54,9 +58,9 @@ export default class BuildParts extends React.Component {
   }
 }
 BuildParts.propTypes = {
-  buildKey: React.PropTypes.string,
   editing: React.PropTypes.bool.isRequired,
   ownerLoggedIn: React.PropTypes.bool,
   partStore: React.PropTypes.object,
-  parts: React.PropTypes.object
+  primaryParts: React.PropTypes.object,
+  secondaryParts: React.PropTypes.object
 };

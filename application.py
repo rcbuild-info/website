@@ -17,7 +17,7 @@ import urlparse
 from hashlib import sha1
 
 application = app = Flask(__name__)
-sslify = SSLify(app)
+sslify = SSLify(app, skips=["healthz"])
 app.config['GITHUB_CLIENT_ID'] = os.environ['GITHUB_CLIENT_ID']
 app.config['GITHUB_CLIENT_SECRET'] = os.environ['GITHUB_CLIENT_SECRET']
 app.config['PROPAGATE_EXCEPTIONS'] = True
@@ -174,8 +174,8 @@ def createbuild():
 def editbuild(username, repo):
   return render_template('main.html')
 
-@app.route('/compare/<primaryUsername>/primaryBranch>/vs/<secondaryUsername>/<secondaryBranch>')
-def comparebuild(primaryUsername, primaryBranch, secondaryUsername, secondarBranch):
+@app.route('/compare/<primaryUsername>/<primaryBranch>/vs/<secondaryUsername>/<secondaryBranch>')
+def comparebuild(primaryUsername, primaryBranch, secondaryUsername, secondaryBranch):
   return render_template('main.html')
 
 @app.route('/build/<username>/<branch>')
