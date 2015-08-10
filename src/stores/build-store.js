@@ -20,6 +20,7 @@ class BuildStore {
     this.builds = {};
 
     this.buildList = {};
+    this.currentListPage = null;
 
     this.exportAsync(BuildSource);
     this.bindListeners({
@@ -61,6 +62,7 @@ class BuildStore {
     } else if (pageInfo.page === "builds") {
       this.primaryBuildVersion = null;
       this.secondaryBuildVersion = null;
+      this.currentListPage = pageInfo.listPage;
       this.getInstance().loadBuildList(pageInfo.listPage);
     }
     if (this.primaryBuildVersion) {
@@ -175,7 +177,7 @@ class BuildStore {
     console.log(response);
   }
   loadedBuildList(response) {
-    this.buildList = response.data;
+    this.buildList[response.config.listPage] = response.data;
   }
   loadBuildListFailed(response) {
     console.log(response);

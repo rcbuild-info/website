@@ -99,7 +99,7 @@ export default {
         if (listPage === undefined) {
           listPage = 1;
         }
-        return axios.get("/list/builds/" + listPage);
+        return axios.get("/list/builds/" + listPage, {"listPage": listPage});
       },
 
       // here we setup some actions to handle our response

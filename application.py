@@ -15,6 +15,7 @@ import copy
 import requests
 import json
 import hmac
+import math
 import urllib
 import urlparse
 from hashlib import sha1
@@ -335,6 +336,10 @@ def list_builds(page):
                   })
   res = es.msearch(body=searches)
   response = {}
+  total_builds = res["responses"][len(res["responses"]) - 1]["hits"]["total"]
+  total_pages = int(math.ceil(total_builds / 10.))
+  response["currentPage"] = page
+  response["totalPages"] = total_pages
   if len(res["responses"]) > 1:
     response["yours"] = []
     for hit in res["responses"][0]["hits"]["hits"]:

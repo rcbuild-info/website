@@ -1,6 +1,7 @@
 import React from "react";
 
 import PageHeader from "react-bootstrap/lib/PageHeader";
+import Pagination from "react-bootstrap/lib/Pagination";
 
 import BuildCard from "./build-card";
 import BuildStore from "../stores/build-store";
@@ -10,6 +11,7 @@ export default class BuildList extends React.Component {
     super();
     this.render = this.render.bind(this);
     this.onBuildChange = this.onBuildChange.bind(this);
+    this.onSelect = this.onSelect.bind(this);
     this.state = {};
   }
   componentDidMount() {
@@ -22,12 +24,17 @@ export default class BuildList extends React.Component {
   }
 
   onBuildChange(state) {
-    this.setState({"buildList": state.buildList});
+    this.setState({"buildList": state.buildList[state.currentListPage]});
+  }
+
+  onSelect(event, selectedEvent) {
+    this.context.router.transitionTo("builds", {"page": selectedEvent.eventKey});
   }
 
   render() {
     var yourBuilds = [];
     var otherBuilds = [];
+    var pagination;
     if (this.state.buildList) {
       if ("yours" in this.state.buildList) {
         for (let build of this.state.buildList.yours) {
@@ -39,6 +46,14 @@ export default class BuildList extends React.Component {
           otherBuilds.push((<BuildCard build={build} key={ "o" + build.user + build.branch } showUser={true}/>));
         }
       }
+      pagination = (<div className="text-center"><Pagination
+                      activePage={this.state.buildList.currentPage}
+                      ellipsis
+                      items={this.state.buildList.totalPages}
+                      maxButtons={5}
+                      next
+                      onSelect={this.onSelect}
+                      prev/></div>);
     }
     let yourBuildsSection;
     let buildSectionName = "Builds";
@@ -50,6 +65,10 @@ export default class BuildList extends React.Component {
               {yourBuildsSection}
               <PageHeader>{buildSectionName}</PageHeader>
               {otherBuilds}
+              {pagination}
             </div>);
   }
 }
+BuildList.contextTypes = {
+  router: React.PropTypes.func
+};
