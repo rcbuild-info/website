@@ -3,8 +3,6 @@ import alt from "../alt";
 import BuildActions from "../actions/build-actions";
 import SiteActions from "../actions/site-actions";
 
-import clone from "clone";
-
 class SiteStore {
   constructor() {
     this.on("error", (err) => {
