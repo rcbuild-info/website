@@ -1,9 +1,11 @@
 require("babelify/polyfill");
 
 var React = require("react");
+var DropdownButton = require("react-bootstrap/lib/DropdownButton");
 var Grid = require("react-bootstrap/lib/Grid");
 var Row = require("react-bootstrap/lib/Row");
 var Col = require("react-bootstrap/lib/Col");
+var MenuItem = require("react-bootstrap/lib/MenuItem");
 var Navbar = require("react-bootstrap/lib/Navbar");
 var CollapsibleNav = require("react-bootstrap/lib/CollapsibleNav");
 var Nav = require("react-bootstrap/lib/Nav");
@@ -13,6 +15,7 @@ import Router from "react-router";
 var RouteHandler = Router.RouteHandler;
 var Link = Router.Link;
 
+import MenuItemLink from "react-router-bootstrap/lib/MenuItemLink";
 import NavItemLink from "react-router-bootstrap/lib/NavItemLink";
 
 import Cookies from "js-cookie";
@@ -50,7 +53,12 @@ export default class RCBuildInfo extends React.Component {
   }
 
   onBuildChange(state) {
-    this.setState({"primaryBuildVersion": state.primaryBuildVersion});
+    let similar;
+    if (state.primaryBuildVersion && state.builds[state.primaryBuildVersion.key]) {
+      similar = state.builds[state.primaryBuildVersion.key].similar;
+    }
+    this.setState({"primaryBuildVersion": state.primaryBuildVersion,
+                   "similarBuilds": similar});
   }
 
   onEditBuild() {
@@ -62,9 +70,32 @@ export default class RCBuildInfo extends React.Component {
                       this.state.page === "createbuild" ||
                       !this.state.primaryBuildVersion ||
                       this.state.loggedInUser !== this.state.primaryBuildVersion.user;
-    let pageNav = [(<NavItem disabled eventKey={1} key="compare">Compare</NavItem>),
-               (<NavItemLink disabled={ disableEdit } eventKey={2} key="edit" params={{"user": disableEdit ? "" : this.state.primaryBuildVersion.user,
-                                                                                       "branch": disableEdit ? "" : this.state.primaryBuildVersion.branch}} to="editbuild">Edit</NavItemLink>)];
+
+    let similar = [];
+    if (this.state.similarBuilds) {
+      if ("yours" in this.state.similarBuilds) {
+        similar.push(<MenuItem header key="mine">Mine</MenuItem>);
+        for (let build of this.state.similarBuilds.yours) {
+          similar.push(<MenuItemLink key={ build.user + "/" + build.branch }
+                                     params={{"primaryUser": this.state.primaryBuildVersion.user,
+                                              "primaryBranch": this.state.primaryBuildVersion.branch,
+                                              "secondaryUser": build.user,
+                                              "secondaryBranch": build.branch}}
+                                     to="compare">{ build.branch }</MenuItemLink>);
+        }
+        similar.push(<MenuItem divider key="d"/>);
+        similar.push(<MenuItem header key="others">Others'</MenuItem>);
+      }
+      for (let build of this.state.similarBuilds.others) {
+        similar.push(<MenuItemLink key={ build.user + "/" + build.branch }
+                                   params={{"primaryUser": this.state.primaryBuildVersion.user,
+                                            "primaryBranch": this.state.primaryBuildVersion.branch,
+                                            "secondaryUser": build.user,
+                                            "secondaryBranch": build.branch}}
+                                   to="compare">{ build.user + "/" + build.branch }</MenuItemLink>);
+      }
+    }
+
     var logo = <Link to="home"><img src="/static/logo.svg"/></Link>;
     var login = <NavItem eventKey={11} href={"/login?next=" + window.location.href}>Login with GitHub</NavItem>;
     if (this.state.loggedInUser) {
@@ -78,7 +109,16 @@ export default class RCBuildInfo extends React.Component {
             <Nav navbar right>
               <NavItemLink eventKey={14} params={ {"page": 1}} to="builds">Find</NavItemLink>
               <NavItemLink eventKey={13} to="createbuild">Create</NavItemLink>
-              {pageNav}
+              <DropdownButton disabled={similar.length === 0} eventKey={1} key="compare" title="Compare">
+                {similar}
+              </DropdownButton>
+              <NavItemLink
+                disabled={ disableEdit }
+                eventKey={2}
+                key="edit"
+                params={{"user": disableEdit ? "" : this.state.primaryBuildVersion.user,
+                         "branch": disableEdit ? "" : this.state.primaryBuildVersion.branch}}
+                to="editbuild">Edit</NavItemLink>
               {login}
             </Nav>
           </CollapsibleNav>

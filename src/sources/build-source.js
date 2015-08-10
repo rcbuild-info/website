@@ -106,5 +106,17 @@ export default {
       success: BuildActions.loadedBuildList, // (required)
       error: BuildActions.loadBuildListFailed // (required)
     };
+  },
+  loadSimilar() {
+    return {
+      // remotely fetch something (required)
+      remote(state, buildVersion) {
+        return axios.get("/similar/builds/" + buildVersion.user + "/" + buildVersion.branch, {"buildVersion": buildVersion});
+      },
+
+      // here we setup some actions to handle our response
+      success: BuildActions.loadedSimilar, // (required)
+      error: BuildActions.loadSimilarFailed // (required)
+    };
   }
 };

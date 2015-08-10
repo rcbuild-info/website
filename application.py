@@ -243,6 +243,56 @@ def updateBuildIndex():
 
   return Response('ok')
 
+def filtered_shoulds(f, shoulds, size=5):
+  return {"query": {"filtered": {"filter": f, "query": {"bool": {"should": shoulds}}}}, "size": size}
+
+@app.route('/similar/builds/<user>/<branch>')
+def similar_builds(user, branch):
+  build = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=refs/heads/" + urllib.quote_plus(branch), {"accept": "application/vnd.github.v3.raw"}, use_cache_even_when_logged_in=True)
+  if build.status_code != requests.codes.ok:
+    return Response(status=requests.codes.server_error)
+  build = json.loads(build.get_data(True))
+
+  not_this_build = {"bool": {"must": [{"term": {"user": user}}, {"term": {"branch": branch}}]}}
+  shoulds = []
+  for category in build["config"]:
+    t = "term"
+    if isinstance(build["config"][category], list):
+      t = "terms"
+    shoulds.append({t: {category: build["config"][category]}})
+  searches = []
+  other_musts = {"missing": {"field": "next_snapshot"}}
+  other_size = 10
+  if "u" in request.cookies:
+    searches.append({"index": "builds", "doc_type": "buildsnapshot"})
+    f = {"bool":
+          {"must": [{"missing": {"field": "next_snapshot"}},
+                    {"term": {"user": request.cookies["u"]}}],
+           "must_not" : not_this_build
+    }}
+    other_musts = [other_musts,
+                   {"not": {"term": {"user": request.cookies["u"]}}}]
+    searches.append(filtered_shoulds(f, shoulds))
+    other_size = 5
+  searches.append({"index": "builds", "doc_type": "buildsnapshot"})
+  f = {"bool":
+        {"must": other_musts,
+         "must_not" : not_this_build
+  }}
+  searches.append(filtered_shoulds(f, shoulds, size=other_size))
+  res = es.msearch(body=searches)
+  response = {}
+  if len(res["responses"]) > 1:
+    response["yours"] = []
+    for hit in res["responses"][0]["hits"]["hits"]:
+      hit = hit["_source"]
+      response["yours"].append({"user": hit["user"], "branch": hit["branch"]})
+  response["others"] = []
+  for hit in res["responses"][len(res["responses"]) - 1]["hits"]["hits"]:
+    hit = hit["_source"]
+    response["others"].append({"user": hit["user"], "branch": hit["branch"]})
+  return Response(json.dumps(response))
+
 def get_part_name(part):
   if "/" not in part:
     return part
@@ -315,7 +365,7 @@ def comparebuild(primaryUsername, primaryBranch, secondaryUsername, secondaryBra
 def build(username, branch):
     return render_template('main.html')
 
-def get_github(url, headers={}):
+def get_github(url, headers={}, use_cache_even_when_logged_in=False):
   has_if = False
   if "If-Modified-Since" in request.headers:
     headers["If-Modified-Since"] = request.headers["If-Modified-Since"]
@@ -323,7 +373,7 @@ def get_github(url, headers={}):
   if "If-None-Match" in request.headers:
     headers["If-None-Match"] = request.headers["If-None-Match"]
     has_if = True
-  if not has_if and "o" not in session and url in github_cache:
+  if (use_cache_even_when_logged_in or (not has_if and "o" not in session)) and url in github_cache:
     cached = github_cache[url]
     return Response(cached["text"],
                     status=cached["status_code"],

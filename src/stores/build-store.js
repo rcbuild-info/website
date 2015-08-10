@@ -37,7 +37,9 @@ class BuildStore {
       loadedSettings: BuildActions.loadedSettings,
       loadSettingsFailed: BuildActions.loadSettingsFailed,
       loadedBuildList: BuildActions.loadedBuildList,
-      loadBuildListFailed: BuildActions.loadBuildListFailed
+      loadBuildListFailed: BuildActions.loadBuildListFailed,
+      loadedSimilar: BuildActions.loadedSimilar,
+      loadSimilarFailed: BuildActions.loadSimilarFailed
     });
   }
   navigateToPage(pageInfo) {
@@ -55,6 +57,8 @@ class BuildStore {
         this.secondaryBuildVersion = null;
       }
     } else if (pageInfo.page === "builds") {
+      this.primaryBuildVersion = null;
+      this.secondaryBuildVersion = null;
       this.getInstance().loadBuildList(pageInfo.listPage);
     }
     if (this.primaryBuildVersion) {
@@ -133,7 +137,8 @@ class BuildStore {
       "state": "exists",
       "dirty": {},
       "parts": response.data,
-      "settings": {"fc": undefined}
+      "settings": {"fc": undefined},
+      "similar": {}
     };
 
     let config = response.data.config;
@@ -143,6 +148,7 @@ class BuildStore {
     this.getInstance().loadSettingsFile({"path": ["fc", "cf_cli"],
                                          "buildVersion": response.config.buildVersion},
                                         "cleanflight_cli_dump.txt");
+    this.getInstance().loadSimilar(response.config.buildVersion);
   }
   loadBuildFailed(response) {
     if (response.status === 404) {
@@ -169,6 +175,12 @@ class BuildStore {
     this.buildList = response.data;
   }
   loadBuildListFailed(response) {
+    console.log(response);
+  }
+  loadedSimilar(response) {
+    this.builds[response.config.buildVersion.key].similar = response.data;
+  }
+  loadSimilarFailed(response) {
     console.log(response);
   }
 }

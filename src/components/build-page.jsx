@@ -13,6 +13,9 @@ import BuildParts from "./build-parts";
 import SiteActions from "../actions/site-actions";
 import FlightControllerSettings from "./fc-settings";
 
+import Router from "react-router";
+var Link = Router.Link;
+
 import BuildStore from "../stores/build-store";
 import PartStore from "../stores/part-store";
 import SiteStore from "../stores/site-store";
@@ -154,7 +157,17 @@ export default class BuildPage extends React.Component {
         secondaryParts = this.state.secondaryBuild.parts;
         secondaryFcSettings = this.state.secondaryBuild.settings.fc;
         let secondaryBuildName = this.state.secondaryBuildVersion.user + "/" + this.state.secondaryBuildVersion.branch;
-        header = (<PageHeader>{primaryBuildName}<small> vs {secondaryBuildName}</small></PageHeader>);
+        header = (<PageHeader>
+                    <small>
+                      <Link params={{"user": this.state.primaryBuildVersion.user,
+                                     "branch": this.state.primaryBuildVersion.branch}} to="build">
+                        {primaryBuildName}
+                      </Link> vs </small>
+                    <Link params={{"user": this.state.secondaryBuildVersion.user,
+                                   "branch": this.state.secondaryBuildVersion.branch}} to="build">
+                      {secondaryBuildName}
+                    </Link>
+                  </PageHeader>);
       }
       return (<div>
                 <Row>
