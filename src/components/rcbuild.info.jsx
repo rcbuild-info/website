@@ -1,7 +1,7 @@
 require("babelify/polyfill");
 
 var React = require("react");
-var DropdownButton = require("react-bootstrap/lib/DropdownButton");
+var DropdownButton = require("./DropdownButton");
 var Grid = require("react-bootstrap/lib/Grid");
 var Row = require("react-bootstrap/lib/Row");
 var Col = require("react-bootstrap/lib/Col");
@@ -72,7 +72,7 @@ export default class RCBuildInfo extends React.Component {
                       this.state.loggedInUser !== this.state.primaryBuildVersion.user;
 
     let similar = [];
-    if (this.state.similarBuilds) {
+    if (this.state.similarBuilds && Object.keys(this.state.similarBuilds).length > 0) {
       if ("yours" in this.state.similarBuilds) {
         similar.push(<MenuItem header key="mine">Mine</MenuItem>);
         for (let build of this.state.similarBuilds.yours) {
