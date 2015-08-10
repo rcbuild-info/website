@@ -221,7 +221,18 @@ export default class BuildPage extends React.Component {
                   </Col>
                 </Row>);
       }
-    }
+  } else if (this.state.primaryBuild.state === "invalid") {
+    return (<Row>
+              <Col md={12}>
+                <PageHeader>{primaryBuildName}</PageHeader>
+              </Col>
+              <Col md={12}>
+                <Panel header="Oops!">
+                  It looks like the <a href={ "https://github.com/" + this.state.primaryBuildVersion.user + "/rcbuild.info-builds/blob/" + this.state.primaryBuildVersion.branch + "/build.json" }>underlying build.json</a> file is invalid JSON! Did someone edit it by hand?
+                </Panel>
+              </Col>
+            </Row>);
+  }
     console.log("didn't render anything!");
     return null;
   }

@@ -138,6 +138,10 @@ class BuildStore {
     this.getInstance().loadBuild(buildVersion);
   }
   loadedBuild(response) {
+    if (typeof response.data === "string" || response.data instanceof String) {
+      this.builds[response.config.buildVersion.key] = {"state": "invalid"};
+      return;
+    }
     this.builds[response.config.buildVersion.key] = {
       "state": "exists",
       "dirty": {},
