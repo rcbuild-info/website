@@ -4,6 +4,8 @@ import BuildActions from "../actions/build-actions";
 import SiteActions from "../actions/site-actions";
 import BuildSource from "../sources/build-source";
 
+import clone from "clone";
+
 import PartStore from "./part-store";
 
 class BuildStore {
@@ -104,8 +106,9 @@ class BuildStore {
     }
   }
   saveBuild() {
-    this.builds[this.primaryBuildVersion.key].state = "saving";
-    this.getInstance().saveBuild(headVersion, this.builds[stagedKey]);
+    let stagedKey = this.primaryBuildVersion.key;
+    this.builds[stagedKey].state = "saving";
+    this.getInstance().saveBuild(this.savedPrimaryBuildVersion, this.builds[stagedKey]);
   }
   discardBuild() {
     this.primaryBuildVersion = this.savedPrimaryBuildVersion;
