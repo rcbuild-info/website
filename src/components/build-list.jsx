@@ -1,31 +1,55 @@
 import React from "react";
 
+import PageHeader from "react-bootstrap/lib/PageHeader";
+
 import BuildCard from "./build-card";
+import BuildStore from "../stores/build-store";
 
 export default class BuildList extends React.Component {
   constructor() {
     super();
     this.render = this.render.bind(this);
+    this.onBuildChange = this.onBuildChange.bind(this);
+    this.state = {};
+  }
+  componentDidMount() {
+    BuildStore.listen(this.onBuildChange);
+    this.onBuildChange(BuildStore.getState());
+  }
+
+  componentWillUnmount() {
+    BuildStore.unlisten(this.onBuildChange);
+  }
+
+  onBuildChange(state) {
+    this.setState({"buildList": state.buildList});
   }
 
   render() {
-    var buildIds = ["tannewt/Blackout",
-                    "kvanvranken/QAV250"];
-    var flightInfo = {"tannewt/Blackout":
-                       {"hd": {"url": "-t-pb3jMmbk",
-                               "arm_time": 28.47},
-                        "flight": {"url": "DsrK2Y6CjhY",
-                                   "arm_time": 0},
-                        "blackbox": {"url": "https://www.dropbox.com/s/nnh9tau26rmr2og/LOG00344.TXT?dl=0"}},
-                      "kvanvranken/QAV250": {"hd": {"url": "vRNahTMs5zg",
-                              "arm_time": 0},
-                       "flight": {"url": "JMKLkgrkkoE",
-                                  "arm_time": 0},
-                       "blackbox": {"url": ""}}};
-    var builds = [];
-    for (var i in buildIds) {
-      builds.push((<BuildCard flightInfo={ flightInfo[buildIds[i]]} id={ buildIds[i] } key={ buildIds[i]}/>));
+    var yourBuilds = [];
+    var otherBuilds = [];
+    if (this.state.buildList) {
+      if ("yours" in this.state.buildList) {
+        for (let build of this.state.buildList.yours) {
+          yourBuilds.push((<BuildCard build={build} key={ "y" + build.user + build.branch } showUser={false}/>));
+        }
+      }
+      if ("others" in this.state.buildList) {
+        for (let build of this.state.buildList.others) {
+          otherBuilds.push((<BuildCard build={build} key={ "o" + build.user + build.branch } showUser={true}/>));
+        }
+      }
     }
-    return <div>{builds}</div>;
+    let yourBuildsSection;
+    let buildSectionName = "Builds";
+    if (yourBuilds.length > 0) {
+      yourBuildsSection = <div><PageHeader>My Builds</PageHeader>{yourBuilds}</div>;
+      buildSectionName = "Other Builds";
+    }
+    return (<div>
+              {yourBuildsSection}
+              <PageHeader>{buildSectionName}</PageHeader>
+              {otherBuilds}
+            </div>);
   }
 }

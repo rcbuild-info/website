@@ -18,19 +18,19 @@ export default class Value extends React.Component {
     if (this.props.primaryValue === undefined) {
       return null;
     }
+    let d = 1;
+    if (this.props.divisor) {
+      d = this.props.divisor;
+    }
     if (!this.props.secondaryValue || this.props.secondaryValue === this.props.primaryValue) {
-      return <span>{(this.props.primaryValue).toFixed(this.state.precision)}</span>;
+      return <span>{(this.props.primaryValue / d).toFixed(this.state.precision)}</span>;
     }
     let sp;
     let diff;
     if (this.props.showDifference) {
       let positive = this.props.secondaryValue > this.props.primaryValue;
-      diff = <span className={ positive ? "diff-positive" : "diff-negative" }>{(positive ? "+" : "") + (this.props.secondaryValue - this.props.primaryValue).toFixed(this.state.precision)}</span>;
+      diff = <span className={ positive ? "diff-positive" : "diff-negative" }>{(positive ? "+" : "") + ((this.props.secondaryValue - this.props.primaryValue) / d).toFixed(this.state.precision)}</span>;
       sp = <span>&nbsp;</span>;
-    }
-    let d = 1;
-    if (this.props.divisor) {
-      d = this.props.divisor;
     }
     return (
         <div className="value">

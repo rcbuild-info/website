@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from cryptography.fernet import Fernet
 from flask import Flask, render_template, Response, abort, session, request, url_for, flash, redirect
 from flask.ext.github import GitHub, GitHubError
@@ -241,8 +243,60 @@ def updateBuildIndex():
 
   return Response('ok')
 
-@app.route('/builds')
-def builds():
+def get_part_name(part):
+  if "/" not in part:
+    return part
+  split = part.rsplit("/", 1)
+  manufacturerID = split[0]
+  partID = split[1]
+  while manufacturerID in LINKS and partID in LINKS[manufacturerID]:
+    manufacturerID = LINKS[manufacturerID][partID][0]
+    partID = LINKS[manufacturerID][partID][1]
+
+  if manufacturerID in PARTS_BY_ID and partID in PARTS_BY_ID[manufacturerID]:
+    return PARTS_BY_ID[manufacturerID][partID]["manufacturer"] + " " +PARTS_BY_ID[manufacturerID][partID]["name"]
+  return manufacturerID + "/" + partID
+
+def get_build_snippet(build):
+  parts = ["frame", "motor", "esc", "fc"]
+  parts = [get_part_name(build["build"]["config"][x]) for x in parts]
+  part_snippet = u" · ".join([x for x in parts if x != ""])
+  snippet = {"user" : build["user"],
+             "branch" : build["branch"],
+             "snippet": part_snippet}
+  return snippet
+
+@app.route('/list/builds', defaults={"page": 1})
+@app.route('/list/builds/<page>')
+def list_builds(page):
+  page = int(page)
+  searches = []
+  if "u" in request.cookies and page == 1:
+    searches.append({"index": "builds", "doc_type": "buildsnapshot"})
+    searches.append({"filter": {"bool": {"must": [{"term": {"user": request.cookies["u"]}},
+                                   {"missing": {"field": "next_snapshot"}}]}},
+                      "sort": [{"timestamp": {"order": "desc"}}]
+                     })
+  searches.append({"index": "builds", "doc_type": "buildsnapshot"})
+  searches.append({"filter": {"missing": {"field": "next_snapshot"}},
+                   "sort": [{"timestamp": {"order": "desc"}}],
+                   "size": 10,
+                   "from": 10 * (page - 1)
+                  })
+  res = es.msearch(body=searches)
+  response = {}
+  if len(res["responses"]) > 1:
+    response["yours"] = []
+    for hit in res["responses"][0]["hits"]["hits"]:
+      response["yours"].append(get_build_snippet(hit["_source"]))
+  response["others"] = []
+  for hit in res["responses"][len(res["responses"]) - 1]["hits"]["hits"]:
+    response["others"].append(get_build_snippet(hit["_source"]))
+  return Response(json.dumps(response))
+
+@app.route('/builds/', defaults={"page": 1})
+@app.route('/builds/<page>')
+def builds(page):
     return render_template('main.html')
 
 @app.route('/createbuild')

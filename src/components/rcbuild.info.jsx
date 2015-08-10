@@ -76,7 +76,7 @@ export default class RCBuildInfo extends React.Component {
         <Navbar brand={logo} toggleNavKey={0}>
           <CollapsibleNav eventKey={0}> {/* This is the eventKey referenced */}
             <Nav navbar right>
-              <NavItemLink eventKey={14} to="builds">Find</NavItemLink>
+              <NavItemLink eventKey={14} params={ {"page": 1}} to="builds">Find</NavItemLink>
               <NavItemLink eventKey={13} to="createbuild">Create</NavItemLink>
               {pageNav}
               {login}

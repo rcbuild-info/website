@@ -17,6 +17,8 @@ class BuildStore {
     this.savedPrimaryBuildVersion = null;
     this.builds = {};
 
+    this.buildList = {};
+
     this.exportAsync(BuildSource);
     this.bindListeners({
       navigateToPage: SiteActions.navigateToPage,
@@ -33,7 +35,9 @@ class BuildStore {
       discardBuild: BuildActions.editBuild,
       setSettings: BuildActions.setSettings,
       loadedSettings: BuildActions.loadedSettings,
-      loadSettingsFailed: BuildActions.loadSettingsFailed
+      loadSettingsFailed: BuildActions.loadSettingsFailed,
+      loadedBuildList: BuildActions.loadedBuildList,
+      loadBuildListFailed: BuildActions.loadBuildListFailed
     });
   }
   navigateToPage(pageInfo) {
@@ -50,6 +54,8 @@ class BuildStore {
       } else {
         this.secondaryBuildVersion = null;
       }
+    } else if (pageInfo.page === "builds") {
+      this.getInstance().loadBuildList(pageInfo.listPage);
     }
     if (this.primaryBuildVersion) {
       this.getInstance().loadBuild(this.primaryBuildVersion);
@@ -157,6 +163,12 @@ class BuildStore {
     settings[path[path.length - 1]] = response.data;
   }
   loadSettingsFailed(response) {
+    console.log(response);
+  }
+  loadedBuildList(response) {
+    this.buildList = response.data;
+  }
+  loadBuildListFailed(response) {
     console.log(response);
   }
 }
