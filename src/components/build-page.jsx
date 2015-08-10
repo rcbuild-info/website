@@ -62,7 +62,7 @@ export default class BuildPage extends React.Component {
     let ownerLoggedIn = false;
     let share = this.state.share;
     if (state.primaryBuildVersion) {
-      ownerLoggedIn = state.loggedInUser === state.primaryBuildVersion.user;
+      ownerLoggedIn = this.state.loggedInUser === state.primaryBuildVersion.user;
       primaryBuild = state.builds[state.primaryBuildVersion.key];
       share = this.state.share ||
               (primaryBuild &&
@@ -89,7 +89,8 @@ export default class BuildPage extends React.Component {
     this.setState({"partStore": state});
   }
   onSiteChange(state) {
-    this.setState({"editing": state.page === "editbuild"});
+    this.setState({"editing": state.page === "editbuild",
+                   "loggedInUser": state.loggedInUser});
   }
 
   onCreateBuild() {
