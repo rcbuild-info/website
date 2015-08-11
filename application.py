@@ -523,11 +523,15 @@ def create_fork_and_branch(user, branch):
   ref_info = json.loads(result.text)
 
   # Determine the sha of heads/master
-  master_sha = ref_info[0]["object"]["sha"]
-  for ref in ref_info[1:]:
+  master_sha = None
+  for ref in ref_info:
     if ref["ref"] == "refs/heads/master":
       master_sha = ref["object"]["sha"]
       break
+
+  if not master_sha:
+    print("missing master branch")
+    return Response(status=requests.codes.server_error)
 
   # Create a new branch for this build starting at heads/master.
   result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/git/refs", data=json.dumps({"ref": "refs/heads/" + branch, "sha": master_sha}))
