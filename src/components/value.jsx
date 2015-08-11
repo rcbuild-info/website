@@ -3,12 +3,14 @@ import React from "react";
 export default class Value extends React.Component {
   constructor(props) {
     super();
+    this.componentDidMount = this.componentDidMount.bind(this);
+    this.componentWillReceiveProps = this.componentWillReceiveProps.bind(this);
     this.render = this.render.bind(this);
     this.state = {"precision": 0};
   }
 
   componentDidMount() {
-    componentWillReceiveProps(this.props);
+    this.componentWillReceiveProps(this.props);
   }
 
   componentWillReceiveProps(nextProps) {
