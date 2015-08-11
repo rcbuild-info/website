@@ -155,8 +155,17 @@ export default class FlightControllerSettings extends React.Component {
       let pPids = this.getPids(p);
       let sPids = {};
       let s = this.state.secondaryCleanflightSettings;
-      if (s) {
+      if (s && Object.keys(s).length > 0) {
         sPids = this.getPids(s);
+      }
+      let pPrecision = 1;
+      let iPrecision = 3;
+      let dPrecision = 0;
+      if ((s && s.pid_controller === 2) ||
+          ((!s || Object.keys(s).length === 0) && p && p.pid_controller === 2)) {
+        pPrecision = 2;
+        iPrecision = 2;
+        dPrecision = 3;
       }
       var corePID =
         (
@@ -168,21 +177,21 @@ export default class FlightControllerSettings extends React.Component {
               <tbody>
                 <tr>
                   <td>Roll</td>
-                  <td><Value precision={1} primaryValue={pPids.pRoll} secondaryValue={sPids.pRoll} showDifference={this.depsMatch("p_roll")}/></td>
-                  <td><Value precision={3} primaryValue={pPids.iRoll} secondaryValue={sPids.iRoll} showDifference={this.depsMatch("i_roll")}/></td>
-                  <td><Value primaryValue={pPids.dRoll} secondaryValue={sPids.dRoll} showDifference={this.depsMatch("d_roll")}/></td>
+                  <td><Value precision={pPrecision} primaryValue={pPids.pRoll} secondaryValue={sPids.pRoll} showDifference={this.depsMatch("p_roll")}/></td>
+                  <td><Value precision={iPrecision} primaryValue={pPids.iRoll} secondaryValue={sPids.iRoll} showDifference={this.depsMatch("i_roll")}/></td>
+                  <td><Value precision={dPrecision} primaryValue={pPids.dRoll} secondaryValue={sPids.dRoll} showDifference={this.depsMatch("d_roll")}/></td>
                 </tr>
                 <tr>
                   <td>Pitch</td>
-                  <td><Value precision={1} primaryValue={pPids.pPitch} secondaryValue={sPids.pPitch} showDifference={this.depsMatch("p_pitch")}/></td>
-                  <td><Value precision={3} primaryValue={pPids.iPitch} secondaryValue={sPids.iPitch} showDifference={this.depsMatch("i_pitch")}/></td>
-                  <td><Value primaryValue={pPids.dPitch} secondaryValue={sPids.dPitch} showDifference={this.depsMatch("d_pitch")}/></td>
+                  <td><Value precision={pPrecision} primaryValue={pPids.pPitch} secondaryValue={sPids.pPitch} showDifference={this.depsMatch("p_pitch")}/></td>
+                  <td><Value precision={iPrecision} primaryValue={pPids.iPitch} secondaryValue={sPids.iPitch} showDifference={this.depsMatch("i_pitch")}/></td>
+                  <td><Value precision={dPrecision} primaryValue={pPids.dPitch} secondaryValue={sPids.dPitch} showDifference={this.depsMatch("d_pitch")}/></td>
                 </tr>
                 <tr>
                   <td>Yaw</td>
-                  <td><Value precision={1} primaryValue={pPids.pYaw} secondaryValue={sPids.pYaw} showDifference={this.depsMatch("p_yaw")}/></td>
-                  <td><Value precision={3} primaryValue={pPids.iYaw} secondaryValue={sPids.iYaw} showDifference={this.depsMatch("i_yaw")}/></td>
-                  <td><Value primaryValue={pPids.dYaw} secondaryValue={sPids.dYaw} showDifference={this.depsMatch("d_yaw")}/></td>
+                  <td><Value precision={pPrecision} primaryValue={pPids.pYaw} secondaryValue={sPids.pYaw} showDifference={this.depsMatch("p_yaw")}/></td>
+                  <td><Value precision={iPrecision} primaryValue={pPids.iYaw} secondaryValue={sPids.iYaw} showDifference={this.depsMatch("i_yaw")}/></td>
+                  <td><Value precision={dPrecision} primaryValue={pPids.dYaw} secondaryValue={sPids.dYaw} showDifference={this.depsMatch("d_yaw")}/></td>
                 </tr>
               </tbody>
             </Table>

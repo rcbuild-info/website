@@ -4,13 +4,18 @@ export default class Value extends React.Component {
   constructor(props) {
     super();
     this.render = this.render.bind(this);
+    this.state = {"precision": 0};
+  }
 
-    if (props.precision) {
-      this.state = {"precision": props.precision};
-    } else if (props.divisor) {
-      this.state = {"precision": Math.log(props.divisor) / Math.LN10};
-    } else {
-      this.state = {"precision": 0};
+  componentDidMount() {
+    componentWillReceiveProps(this.props);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    if (nextProps.precision) {
+      this.setState({"precision": nextProps.precision});
+    } else if (nextProps.divisor) {
+      this.setState({"precision": Math.log(nextProps.divisor) / Math.LN10});
     }
   }
 
