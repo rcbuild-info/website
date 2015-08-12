@@ -33,6 +33,9 @@ f = Fernet(FERNET_KEY)
 
 es = elasticsearch.Elasticsearch([os.environ['ES_HOST']])
 
+partCategories_string = ""
+partCategories = {}
+
 github_cache = pylru.lrucache(64)
 
 from git import Repo
@@ -258,9 +261,16 @@ def similar_builds(user, branch):
   shoulds = []
   for category in build["config"]:
     t = "term"
+    term = {category: {"value": build["config"][category]}}
     if isinstance(build["config"][category], list):
       t = "terms"
-    shoulds.append({t: {category: build["config"][category]}})
+      term = {category: build["config"][category]}
+    if category in partCategories and "similarBoost" in partCategories[category]:
+      if t == "term":
+        term[category]["boost"] = partCategories[category]["similarBoost"]
+      else:
+        term["boost"] = partCategories[category]["similarBoost"]
+    shoulds.append({t: term})
   searches = []
   other_musts = {"missing": {"field": "next_snapshot"}}
   other_size = 10
@@ -370,21 +380,21 @@ def comparebuild(primaryUsername, primaryBranch, secondaryUsername, secondaryBra
 def build(username, branch):
     return render_template('main.html')
 
-def get_github(url, headers={}, use_cache_even_when_logged_in=False):
+def get_github(url, headers={}, use_cache_even_when_logged_in=False, skip_cache=False):
   has_if = False
-  if "If-Modified-Since" in request.headers:
+  if request and "If-Modified-Since" in request.headers:
     headers["If-Modified-Since"] = request.headers["If-Modified-Since"]
     has_if = True
-  if "If-None-Match" in request.headers:
+  if request and "If-None-Match" in request.headers:
     headers["If-None-Match"] = request.headers["If-None-Match"]
     has_if = True
-  if (use_cache_even_when_logged_in or (not has_if and "o" not in session)) and url in github_cache:
+  if not skip_cache and (use_cache_even_when_logged_in or (not has_if and "o" not in session)) and url in github_cache:
     cached = github_cache[url]
     return Response(cached["text"],
                     status=cached["status_code"],
                     headers=cached["headers"])
   github_response = github.raw_request("GET", url, headers=headers)
-  cache_response = url != "user"
+  cache_response = url != "user" and not skip_cache
   if github_response.status_code == requests.codes.ok:
     resp = Response(github_response.text)
     resp.headers['etag'] = github_response.headers['etag']
@@ -451,7 +461,7 @@ def authorized(oauth_token):
 
 @github.access_token_getter
 def token_getter():
-  if request.path == "/update/buildIndex":
+  if not request or request.path in ["/update/buildIndex", "/update/partCategories"]:
     return os.environ["READONLY_GITHUB_TOKEN"]
   if "o" in session:
     return f.decrypt(session["o"])
@@ -658,14 +668,36 @@ def setting_upload(user, branch):
 def config_json(user, branch, filename):
     return get_github("repos/" + user + "/rcbuild.info-builds/contents/" + filename + "?ref=refs/heads/" + urllib.quote_plus(branch), {"accept": "application/vnd.github.v3.raw"})
 
+def updatePartCategoriesHelper():
+  global partCategories_string
+  global partCategories
+
+  resp = get_github("repos/rcbuild-info/part-skeleton/contents/partCategories.json", {"accept": "application/vnd.github.v3.raw"}, skip_cache=True)
+
+  partCategories_string = resp.get_data(True)
+  partCategories = json.loads(partCategories_string)
+
+@app.route('/update/partCategories', methods=["GET", "HEAD", "OPTIONS", "POST"])
+def updatePartCategories():
+  if request.method != "POST":
+    abort(405)
+
+  h = hmac.new(os.environ['GITHUB_PART_HOOK_HMAC'], request.data, sha1)
+  if not debug and not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+    abort(403)
+
+  updatePartCategoriesHelper()
+  return 'ok'
+
 @app.route('/partCategories.json')
 def part_categories():
-    return get_github("repos/rcbuild-info/part-skeleton/contents/partCategories.json", {"accept": "application/vnd.github.v3.raw"})
+    return Response(partCategories_string)
 
 @app.route('/healthz')
 def healthz():
   return Response(response="ok", content_type="Content-Type: text/plain; charset=utf-8", status=requests.codes.ok)
 
+updatePartCategoriesHelper()
 updatePartIndexHelper()
 if __name__ == '__main__':
     application.run(debug = True)
