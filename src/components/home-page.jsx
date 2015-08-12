@@ -13,7 +13,7 @@ export default class HomePage extends React.Component {
   render() {
     return (<Jumbotron>
               <h1>Welcome!</h1>
-              <p>Find a build and PIDs to make the best flying multirotor you've ever had. Or, create your build and PIDs you already have to compare to similar setups.</p>
+              <p>Find a build and PIDs to make the best flying multirotor you've ever had. Or, create your build and PIDs you already have to compare to similar setups. <a href="https://www.youtube.com/watch?v=RkJ4Ao4xv3M">Learn more.</a></p>
               <p>
                 <ButtonLink bsStyle="primary" params={{"page": 1}} to="builds">Find Build</ButtonLink>
                 &nbsp;
