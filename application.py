@@ -142,6 +142,9 @@ def updateBuildIndex():
   if request.method == "POST":
     request_data = request.get_data()
     push_info = json.loads(request_data)
+    if "name" not in push_info["repository"]["owner"]:
+      print(push_info)
+      abort(403)
     user = push_info["repository"]["owner"]["name"]
     if not app.debug:
       res = es.get(index='private', doc_type='githubsecret', id=user)
@@ -159,11 +162,16 @@ def updateBuildIndex():
     if branch.startswith("patch"):
       return Response('ok')
 
+    # Ignore the push notification we get when a new branch is created.
+    if push_info["before"] == "0000000000000000000000000000000000000000" or len(push_info["commits"]) == 0:
+      print("Dropping notification of creation of " + push_info["ref"] + " in " + push_info["repository"]["full_name"])
+      return Response('ok')
+
     res = None
     try:
       res = es.get(index='builds', doc_type='buildsnapshot', id=push_info["before"])
     except elasticsearch.TransportError as e:
-      print(e)
+      print(e, push_info)
       pass
     current_snapshot = None
     current_doc_id = {"_index": "builds", "_type": "buildsnapshot", "_id": push_info["before"]}
@@ -221,7 +229,7 @@ def updateBuildIndex():
           try:
             res = es.get(index='builds', doc_type='buildsnapshot', id=previous_doc_id["_id"])
           except elasticsearch.TransportError as e:
-            print(e)
+            print(e, previous_doc_id)
             pass
           if res and res["found"]:
             previous_snapshot = res["_source"]
@@ -242,8 +250,7 @@ def updateBuildIndex():
       actions.append({"index": current_doc_id})
       actions.append(current_snapshot)
 
-    res = es.bulk(index='builds', doc_type='buildsnapshot', body=actions)
-    print(res)
+    es.bulk(index='builds', doc_type='buildsnapshot', body=actions)
 
   return Response('ok')
 
