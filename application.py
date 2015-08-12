@@ -683,7 +683,7 @@ def updatePartCategories():
     abort(405)
 
   h = hmac.new(os.environ['GITHUB_PART_HOOK_HMAC'], request.data, sha1)
-  if not debug and not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+  if not app.debug and not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
     abort(403)
 
   updatePartCategoriesHelper()
