@@ -15,20 +15,25 @@ export default class PartDetails extends React.Component {
     return parser.hostname.replace("www.", "");
   }
 
-  static trackOutboundLink(url) {
-     ga("send", "event", "outbound", "click", url, {"hitCallback":
-       function () {
-         document.location = url;
-       }
-     });
+  static trackOutboundLink(url, redirect) {
+    ga("send", "event", "outbound", "click", url, {"hitCallback":
+      function () {
+        if (redirect) {
+          document.location = url;
+        }
+      }
+    });
   }
 
-  static onClick(url, event) {
-    PartDetails.trackOutboundLink(url);
-    if (event.preventDefault) {
-      event.preventDefault();
-    } else {
-      event.returnValue = !1;
+  onClick(url, event) {
+    let redirect = !event.ctrlKey && !event.metaKey && event.nativeEvent.button === 0;
+    PartDetails.trackOutboundLink(url, redirect);
+    if (redirect) {
+      if (event.preventDefault) {
+        event.preventDefault();
+      } else {
+        event.returnValue = !1;
+      }
     }
   }
 
@@ -42,7 +47,7 @@ export default class PartDetails extends React.Component {
         for (let i = 0; i < this.props.partInfo.urls[urlClass].length; i++) {
           let url = this.props.partInfo.urls[urlClass][i];
           let site = PartDetails.getSite(url);
-          content.push((<li key={url}><a className={urlClass} href={url} onClick={ PartDetails.onClick.bind(url) }>{site}</a></li>));
+          content.push((<li key={url}><a className={urlClass} href={url} onClick={ this.onClick.bind(this, url) }>{site}</a></li>));
         }
       }
     }
