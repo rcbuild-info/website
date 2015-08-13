@@ -272,11 +272,12 @@ def similar_builds(user, branch):
     if isinstance(build["config"][category], list):
       t = "terms"
       term = {category: build["config"][category]}
-    if category in partCategories and "similarBoost" in partCategories[category]:
+
+    if category in partCategories["categories"] and "similarBoost" in partCategories["categories"][category]:
       if t == "term":
-        term[category]["boost"] = partCategories[category]["similarBoost"]
+        term[category]["boost"] = partCategories["categories"][category]["similarBoost"]
       else:
-        term["boost"] = partCategories[category]["similarBoost"]
+        term["boost"] = partCategories["categories"][category]["similarBoost"]
     shoulds.append({t: term})
   searches = []
   other_musts = {"missing": {"field": "next_snapshot"}}
