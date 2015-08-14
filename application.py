@@ -421,6 +421,10 @@ def get_github(url, headers={}, use_cache_even_when_logged_in=False, skip_cache=
       resp.headers['last-modified'] = github_response.headers['last-modified']
     resp.headers['cache-control'] = github_response.headers['cache-control']
     return resp
+  elif github_response.status_code == requests.codes.forbidden and github_response.headers["x-ratelimit-remaining"] == '0':
+    print("ran out of freebie github quota!")
+    return Response(status=429)
+
   if cache_response:
     github_cache[url] = {"text": "",
                          "status_code": github_response.status_code,

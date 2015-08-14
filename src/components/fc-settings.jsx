@@ -7,7 +7,8 @@ import Input from "react-bootstrap/lib/Input";
 import Panel from "react-bootstrap/lib/Panel";
 import Table from "react-bootstrap/lib/Table";
 
-import Value from "./value";
+import NumericValue from "./numeric-value";
+import StringValue from "./string-value";
 
 export default class FlightControllerSettings extends React.Component {
   constructor() {
@@ -69,12 +70,22 @@ export default class FlightControllerSettings extends React.Component {
 
   static parseCleanflightDump(dumpTxt) {
     var splitTxt = dumpTxt.split("\n");
-    var setRegExp = new RegExp("set (\\w+) =\\s+(\\d+\\.\\d+|\\d+)");
+    var setRegExp = /set (\w+) =\s+(\d+\.\d+|\d+)/;
+    var versionRegExp = /#? ?(\w+)\/\w+ (\d+\.\d+\.\d+) ([^\(]+)\(([0-9a-z]{7})\)/;
     var config = {};
     for (var lineNum in splitTxt) {
       var result = setRegExp.exec(splitTxt[lineNum]);
       if (result) {
         config[result[1]] = Number(result[2]);
+        continue;
+      }
+      result = versionRegExp.exec(splitTxt[lineNum]);
+      if (result) {
+        config.fc_name = result[1];
+        config.fc_version = result[2];
+        config.fc_build_date = result[3].trim();
+        config.fc_build_commit = result[4];
+        continue;
       }
     }
     return config;
@@ -134,7 +145,7 @@ export default class FlightControllerSettings extends React.Component {
     return true;
   }
 
-  getRows(definition) {
+  getNumericRows(definition) {
     let p = this.state.primaryCleanflightSettings;
     let s = this.state.secondaryCleanflightSettings;
     let rows = [];
@@ -142,11 +153,36 @@ export default class FlightControllerSettings extends React.Component {
       rows.push(
         <tr key={def.key}>
           <td>{def.name ? def.name : def.key}</td>
-          <td><Value divisor={ def.divisor } primaryValue={p[def.key]} secondaryValue={s[def.key]} showDifference={this.depsMatch(def.key)}/></td>
+          <td><NumericValue divisor={ def.divisor } primaryValue={p[def.key]} secondaryValue={s[def.key]} showDifference={this.depsMatch(def.key)}/></td>
         </tr>
       );
     }
     return rows;
+  }
+
+  getStringRows(definition) {
+    let p = this.state.primaryCleanflightSettings;
+    let s = this.state.secondaryCleanflightSettings;
+    let rows = [];
+    for (let def of definition) {
+      rows.push(
+        <tr key={def.key}>
+          <td>{def.name ? def.name : def.key}</td>
+          <td><StringValue getUrl={def.getUrl} primaryValue={p[def.key]} secondaryValue={s[def.key]}/></td>
+        </tr>
+      );
+    }
+    return rows;
+  }
+
+  static firmwareUrl(firmwareName) {
+    var urls = {"Cleanflight": "http://cleanflight.com/",
+                "BetaFlight": "http://www.rcgroups.com/forums/showthread.php?t=2464844"};
+    return urls[firmwareName];
+  }
+
+  static commitUrl(firmwareCommit) {
+    return "https://github.com/cleanflight/cleanflight/commit/" + firmwareCommit;
   }
 
   render() {
@@ -158,6 +194,18 @@ export default class FlightControllerSettings extends React.Component {
       if (s && Object.keys(s).length > 0) {
         sPids = this.getPids(s);
       }
+      var firmware =
+        (
+          <Table condensed striped>
+            <tbody>
+              { this.getStringRows([{"name": "Name", "key": "fc_name", "getUrl": FlightControllerSettings.firmwareUrl},
+                                    {"name": "Version", "key": "fc_version"},
+                                    {"name": "Build Date", "key": "fc_build_date"},
+                                    {"name": "Build Commit", "key": "fc_build_commit", "getUrl": FlightControllerSettings.commitUrl}]) }
+            </tbody>
+          </Table>
+        );
+
       let pPrecision = 1;
       let iPrecision = 3;
       let dPrecision = 0;
@@ -177,21 +225,21 @@ export default class FlightControllerSettings extends React.Component {
               <tbody>
                 <tr>
                   <td>Roll</td>
-                  <td><Value precision={pPrecision} primaryValue={pPids.pRoll} secondaryValue={sPids.pRoll} showDifference={this.depsMatch("p_roll")}/></td>
-                  <td><Value precision={iPrecision} primaryValue={pPids.iRoll} secondaryValue={sPids.iRoll} showDifference={this.depsMatch("i_roll")}/></td>
-                  <td><Value precision={dPrecision} primaryValue={pPids.dRoll} secondaryValue={sPids.dRoll} showDifference={this.depsMatch("d_roll")}/></td>
+                  <td><NumericValue precision={pPrecision} primaryValue={pPids.pRoll} secondaryValue={sPids.pRoll} showDifference={this.depsMatch("p_roll")}/></td>
+                  <td><NumericValue precision={iPrecision} primaryValue={pPids.iRoll} secondaryValue={sPids.iRoll} showDifference={this.depsMatch("i_roll")}/></td>
+                  <td><NumericValue precision={dPrecision} primaryValue={pPids.dRoll} secondaryValue={sPids.dRoll} showDifference={this.depsMatch("d_roll")}/></td>
                 </tr>
                 <tr>
                   <td>Pitch</td>
-                  <td><Value precision={pPrecision} primaryValue={pPids.pPitch} secondaryValue={sPids.pPitch} showDifference={this.depsMatch("p_pitch")}/></td>
-                  <td><Value precision={iPrecision} primaryValue={pPids.iPitch} secondaryValue={sPids.iPitch} showDifference={this.depsMatch("i_pitch")}/></td>
-                  <td><Value precision={dPrecision} primaryValue={pPids.dPitch} secondaryValue={sPids.dPitch} showDifference={this.depsMatch("d_pitch")}/></td>
+                  <td><NumericValue precision={pPrecision} primaryValue={pPids.pPitch} secondaryValue={sPids.pPitch} showDifference={this.depsMatch("p_pitch")}/></td>
+                  <td><NumericValue precision={iPrecision} primaryValue={pPids.iPitch} secondaryValue={sPids.iPitch} showDifference={this.depsMatch("i_pitch")}/></td>
+                  <td><NumericValue precision={dPrecision} primaryValue={pPids.dPitch} secondaryValue={sPids.dPitch} showDifference={this.depsMatch("d_pitch")}/></td>
                 </tr>
                 <tr>
                   <td>Yaw</td>
-                  <td><Value precision={pPrecision} primaryValue={pPids.pYaw} secondaryValue={sPids.pYaw} showDifference={this.depsMatch("p_yaw")}/></td>
-                  <td><Value precision={iPrecision} primaryValue={pPids.iYaw} secondaryValue={sPids.iYaw} showDifference={this.depsMatch("i_yaw")}/></td>
-                  <td><Value precision={dPrecision} primaryValue={pPids.dYaw} secondaryValue={sPids.dYaw} showDifference={this.depsMatch("d_yaw")}/></td>
+                  <td><NumericValue precision={pPrecision} primaryValue={pPids.pYaw} secondaryValue={sPids.pYaw} showDifference={this.depsMatch("p_yaw")}/></td>
+                  <td><NumericValue precision={iPrecision} primaryValue={pPids.iYaw} secondaryValue={sPids.iYaw} showDifference={this.depsMatch("i_yaw")}/></td>
+                  <td><NumericValue precision={dPrecision} primaryValue={pPids.dYaw} secondaryValue={sPids.dYaw} showDifference={this.depsMatch("d_yaw")}/></td>
                 </tr>
               </tbody>
             </Table>
@@ -199,11 +247,11 @@ export default class FlightControllerSettings extends React.Component {
               <tbody>
                 <tr>
                   <td>PID Controller</td>
-                  <td><Value primaryValue={p.pid_controller} secondaryValue={s.pid_controller}/></td>
+                  <td><NumericValue primaryValue={p.pid_controller} secondaryValue={s.pid_controller}/></td>
                 </tr>
                 <tr>
                   <td>looptime</td>
-                  <td><Value primaryValue={p.looptime} secondaryValue={s.looptime}/></td>
+                  <td><NumericValue primaryValue={p.looptime} secondaryValue={s.looptime}/></td>
                 </tr>
               </tbody>
             </Table>
@@ -214,11 +262,11 @@ export default class FlightControllerSettings extends React.Component {
         (
           <Table condensed striped>
             <tbody>
-              { this.getRows([{"name": "Roll", "key": "roll_rate", "divisor": 100.},
-                              {"name": "Pitch", "key": "pitch_rate", "divisor": 100.},
-                              {"name": "Yaw", "key": "yaw_rate", "divisor": 100.},
-                              {"name": "TPA", "key": "tpa_rate", "divisor": 100.},
-                              {"name": "TPA Breakpoint", "key": "tpa_breakpoint"}]) }
+              { this.getNumericRows([{"name": "Roll", "key": "roll_rate", "divisor": 100.},
+                                     {"name": "Pitch", "key": "pitch_rate", "divisor": 100.},
+                                     {"name": "Yaw", "key": "yaw_rate", "divisor": 100.},
+                                     {"name": "TPA", "key": "tpa_rate", "divisor": 100.},
+                                     {"name": "TPA Breakpoint", "key": "tpa_breakpoint"}]) }
             </tbody>
           </Table>
         );
@@ -226,10 +274,10 @@ export default class FlightControllerSettings extends React.Component {
         (
           <Table condensed striped>
             <tbody>
-              { this.getRows([{"key": "gyro_lpf"},
-                              {"key": "dterm_cut_hz"},
-                              {"key": "pterm_cut_hz"},
-                              {"key": "gyro_cut_hz"}]) }
+              { this.getNumericRows([{"key": "gyro_lpf"},
+                                     {"key": "dterm_cut_hz"},
+                                     {"key": "pterm_cut_hz"},
+                                     {"key": "gyro_cut_hz"}]) }
             </tbody>
           </Table>
         );
@@ -248,7 +296,7 @@ export default class FlightControllerSettings extends React.Component {
           other = (
             <Table condensed striped>
               <tbody>
-                { this.getRows(interestingOther) }
+                { this.getNumericRows(interestingOther) }
               </tbody>
             </Table>
           );
@@ -272,7 +320,8 @@ export default class FlightControllerSettings extends React.Component {
         other = (<div><h3>Other</h3>{other}</div>);
       }
       content = (<div className="pids" fill>
-                  <div><h3>Core</h3>{corePID}</div>
+                  <div><h3>Firmware</h3>{firmware}</div>
+                  <div><h3>Core PIDs</h3>{corePID}</div>
                   <div><h3>Rates</h3>{rates}</div>
                   <div><h3>Filter</h3>{filter}</div>
                   { other }

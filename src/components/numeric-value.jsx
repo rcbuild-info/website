@@ -1,6 +1,6 @@
 import React from "react";
 
-export default class Value extends React.Component {
+export default class NumericValue extends React.Component {
   constructor(props) {
     super();
     this.componentDidMount = this.componentDidMount.bind(this);
@@ -49,7 +49,7 @@ export default class Value extends React.Component {
       );
     }
 }
-Value.propTypes = {
+NumericValue.propTypes = {
   divisor: React.PropTypes.number,
   precision: React.PropTypes.number,
   primaryValue: React.PropTypes.number,
