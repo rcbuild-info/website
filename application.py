@@ -537,7 +537,7 @@ def create_fork_and_branch(user, branch):
       return Response(status=requests.codes.server_error)
 
   # Get all branches for the repo.
-  result = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/git/refs")
+  result = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/git/refs/heads/master")
   if result.status_code != requests.codes.ok:
     print(result.status_code)
     print(result.text)
@@ -545,11 +545,7 @@ def create_fork_and_branch(user, branch):
   ref_info = json.loads(result.text)
 
   # Determine the sha of heads/master
-  master_sha = None
-  for ref in ref_info:
-    if ref["ref"] == "refs/heads/master":
-      master_sha = ref["object"]["sha"]
-      break
+  master_sha = ref_info["object"]["sha"]
 
   if not master_sha:
     print("missing master branch")
