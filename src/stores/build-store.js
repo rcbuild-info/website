@@ -109,6 +109,7 @@ class BuildStore {
   }
   saveBuild() {
     let stagedKey = this.primaryBuildVersion.key;
+    ga("send", "event", "build", "save", stagedKey);
     this.builds[stagedKey].state = "saving";
     this.getInstance().saveBuild(this.savedPrimaryBuildVersion, this.builds[stagedKey]);
   }
@@ -117,21 +118,26 @@ class BuildStore {
     this.savedPrimaryBuildVersion = null;
   }
   savedBuild(response) {
+    ga("send", "event", "build", "saved", this.primaryBuildVersion.key);
     this.builds[this.savedPrimaryBuildVersion.key] = this.builds[this.primaryBuildVersion.key];
     this.discardBuild();
     let key = response.config.buildVersion.key;
     this.builds[key].state = "exists";
   }
   saveBuildFailed(response) {
+    ga("send", "event", "build", "saveFailed", response.config.buildVersion.key);
     this.builds[response.config.buildVersion.key].state = "save-failed";
   }
   createBuild(buildVersion) {
+    ga("send", "event", "build", "create", buildVersion.user + "/" + buildVersion.branch);
     this.getInstance().createBuild(buildVersion);
   }
   createdBuild(response) {
+    ga("send", "event", "build", "created", response.config.buildVersion.user + "/" + response.config.buildVersion.branch);
     this.getInstance().loadBuild(response.config.buildVersion);
   }
   createBuildFailed(response) {
+    ga("send", "event", "build", "createFailed", response.config.buildVersion.user + "/" + response.config.buildVersion.branch);
     this.builds[response.config.buildVersion.key].state = "create-failed";
   }
   loadBuild(buildVersion) {
