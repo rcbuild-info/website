@@ -3,7 +3,7 @@ import React from "react";
 import PageHeader from "react-bootstrap/lib/PageHeader";
 import Pagination from "react-bootstrap/lib/Pagination";
 
-import Tokenizer from "react-typeahead/lib/Tokenizer";
+var Tokenizer = require('react-typeahead').Tokenizer;
 
 import BuildCard from "./build-card";
 import SearchStore from "../stores/search-store";
