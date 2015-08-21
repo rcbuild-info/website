@@ -346,6 +346,7 @@ def get_build_snippet(build):
   return snippet
 
 @app.route('/list/builds', defaults={"page": 1}, methods=["GET", "HEAD", "OPTIONS", "POST"])
+@app.route('/list/builds/<page>', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def list_builds(page):
   if request.method != "POST":
     return Response(status=requests.codes.method_not_allowed)
