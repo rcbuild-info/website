@@ -1,5 +1,6 @@
 import React from "react";
 
+import Alert from "react-bootstrap/lib/Alert";
 import PageHeader from "react-bootstrap/lib/PageHeader";
 import Pagination from "react-bootstrap/lib/Pagination";
 
@@ -8,6 +9,9 @@ var Tokenizer = require('react-typeahead').Tokenizer;
 import BuildCard from "./build-card";
 import SearchStore from "../stores/search-store";
 import PartStore from "../stores/part-store";
+
+import Router from "react-router";
+var Link = Router.Link;
 
 export default class BuildList extends React.Component {
   constructor() {
@@ -167,6 +171,8 @@ export default class BuildList extends React.Component {
     if (yourBuilds.length > 0) {
       yourBuildsSection = <div><h3>Mine</h3>{yourBuilds}</div>;
       buildSectionName = <h3>Others</h3>;
+    } else if (otherBuilds.length === 0) {
+      yourBuildsSection = (<div><br/><Alert bsStyle="info"><strong>Oops!</strong> No one has a build with any of those parts. Do you have one? If so, <Link to="createbuild">create it here</Link> to share it with others!</Alert></div>);
     }
     let placeholder = "Search";
     if (this.state.currentParts.length > 0) {
