@@ -143,7 +143,8 @@ def updateBuildIndex():
     request_data = request.get_data()
     push_info = json.loads(request_data)
     if "name" not in push_info["repository"]["owner"]:
-      print(push_info)
+      print("owner missing name")
+      print(push_info["repository"])
       abort(403)
     user = push_info["repository"]["owner"]["name"]
     if not app.debug:
@@ -171,7 +172,7 @@ def updateBuildIndex():
     try:
       res = es.get(index='builds', doc_type='buildsnapshot', id=push_info["before"])
     except elasticsearch.TransportError as e:
-      print(e, push_info)
+      print("elastic search error fetching current", e, push_info["before"])
       pass
     current_snapshot = None
     current_doc_id = {"_index": "builds", "_type": "buildsnapshot", "_id": push_info["before"]}
@@ -229,7 +230,7 @@ def updateBuildIndex():
           try:
             res = es.get(index='builds', doc_type='buildsnapshot', id=previous_doc_id["_id"])
           except elasticsearch.TransportError as e:
-            print(e, previous_doc_id)
+            print("elastic search error fetching previous", e, previous_doc_id)
             pass
           if res and res["found"]:
             previous_snapshot = res["_source"]
@@ -561,15 +562,15 @@ def create_fork_and_branch(user, branch):
             "active": True}
     result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/hooks", data=json.dumps(hook))
     if result.status_code != requests.codes.created:
-      print(result.status_code)
-      print(result.text)
+      print(565, result.status_code)
+      print(566, result.text)
       return Response(status=requests.codes.server_error)
 
   # Get all branches for the repo.
   result = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/git/refs/heads/master")
   if result.status_code != requests.codes.ok:
-    print(result.status_code)
-    print(result.text)
+    print(572, result.status_code)
+    print(573, result.text)
     return Response(status=requests.codes.server_error)
   ref_info = json.loads(result.text)
 
@@ -577,14 +578,14 @@ def create_fork_and_branch(user, branch):
   master_sha = ref_info["object"]["sha"]
 
   if not master_sha:
-    print("missing master branch")
+    print(581, "missing master branch")
     return Response(status=requests.codes.server_error)
 
   # Create a new branch for this build starting at heads/master.
   result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/git/refs", data=json.dumps({"ref": "refs/heads/" + branch, "sha": master_sha}))
   if result.status_code != requests.codes.created:
-    print(result.status_code)
-    print(result.text)
+    print(587, result.status_code)
+    print(588, result.text)
     return Response(status=requests.codes.server_error)
 
   # Update the default branch away from master if it was a new repo.
@@ -595,8 +596,8 @@ def create_fork_and_branch(user, branch):
                                             "default_branch": branch,
                                             "homepage": "https://rcbuild.info/builds/" + user}))
     if result.status_code != requests.codes.ok:
-      print(result.status_code)
-      print(result.text)
+      print(599, result.status_code)
+      print(600, result.text)
       return Response(status=requests.codes.server_error)
   return Response()
 
@@ -604,16 +605,16 @@ def new_commit(user, branch, tree, message):
   # Get the sha of the current commit at head.
   result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch))
   if result.status_code != requests.codes.ok:
-    print(result.status_code)
-    print(result.text)
+    print(608, result.status_code)
+    print(609, result.text)
     return Response(status=requests.codes.server_error)
   branch_info = json.loads(result.text)
   latest_commit_sha = branch_info["object"]["sha"]
 
   result = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/git/commits/" + latest_commit_sha)
   if result.status_code != requests.codes.ok:
-    print(result.status_code)
-    print(result.text)
+    print(616, result.status_code)
+    print(617, result.text)
     return Response(status=requests.codes.server_error)
   commit_info = json.loads(result.text)
   last_tree_sha = commit_info["tree"]["sha"]
@@ -625,8 +626,8 @@ def new_commit(user, branch, tree, message):
                                  "tree": tree
                                 }))
   if result.status_code != requests.codes.created:
-    print(result.status_code)
-    print(result.text)
+    print(629, result.status_code)
+    print(630, result.text)
     return Response(status=requests.codes.server_error)
   new_tree_info = json.loads(result.text)
   new_tree_sha = new_tree_info["sha"]
@@ -638,8 +639,8 @@ def new_commit(user, branch, tree, message):
                                  "parents": [latest_commit_sha],
                                  "tree": new_tree_sha}))
   if result.status_code != requests.codes.created:
-    print(result.status_code)
-    print(result.text)
+    print(642, result.status_code)
+    print(643, result.text)
     return Response(status=requests.codes.server_error)
   new_commit_info = json.loads(result.text)
   new_commit_sha = new_commit_info["sha"]
@@ -649,8 +650,8 @@ def new_commit(user, branch, tree, message):
                               data=json.dumps(
                                 {"sha": new_commit_sha}))
   if result.status_code != requests.codes.ok:
-    print(result.status_code)
-    print(result.text)
+    print(653, result.status_code)
+    print(654, result.text)
     return Response(status=requests.codes.server_error)
 
   return Response()
@@ -681,7 +682,7 @@ def setting_upload(user, branch):
   if request.method != "POST":
     return Response(status=requests.codes.method_not_allowed)
   if int(request.headers["Content-Length"]) > 40*(2**10):
-    print(request.headers["Content-Length"])
+    print("settings too large", request.headers["Content-Length"])
     return Response(status=requests.codes.bad_request)
   new_tree = []
   for filename in ["cleanflight_cli_dump.txt", "cleanflight_gui_backup.json", "build.json"]:
