@@ -135,7 +135,7 @@ export default class BuildList extends React.Component {
     if (option === undefined) {
       return "unknown";
     }
-    return option.fullName + " " + option.category;
+    return option.fullName;
   }
 
   render() {
