@@ -70,7 +70,7 @@ body {
   margin-bottom: 0px;
 }
 
-.react-autosuggest {
+.react-autosuggest, .typeahead-tokenizer {
   position: relative;
 }
 
@@ -78,7 +78,7 @@ body {
   width: 100%;
 }
 
-.react-autosuggest input:focus {
+.react-autosuggest input:focus, .typeahead input:focus {
   outline: none;
 }
 
@@ -103,6 +103,78 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.typeahead {
+    border:  none;
+    flex-grow: 1;
+    position: relative;
+}
+
+.typeahead-tokenizer {
+    border: solid 1px #e0e0e0;
+    border-radius: 4px;
+    background-color: #fdfdfd;
+    display: flex;
+    cursor: text;
+}
+
+.typeahead-token {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.typeahead input[type="text"] {
+    border: none;
+    background-color: inherit;
+    font-size: large;
+    width: 100%;
+    padding: 0.7em 0.2em 0.7em 0.3em;
+    position: relative;
+}
+
+.typeahead-token {
+    border: 1px solid #bbbbbb;
+    border-radius: 4px;
+    padding: .2em;
+    background-color: #f8f8f8;
+    margin-left: 0.5em;
+    padding-left: 6px;
+}
+
+.typeahead-token-close {
+    color: #777777;
+    /* background-color: #dddddd; */
+    padding-left: 4px;
+    padding-right: 4px;
+    font-size: larger;
+    font-weight: bolder;
+}
+
+.typeahead-option {
+  color: #777777;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hover .typeahead-option {
+  color: #333333;
+}
+
+.typeahead-selector {
+  position: absolute;
+  width: 100%;
+  margin: 0;
+  padding-left: 0.3em;
+  list-style-type: none;
+  z-index: 2;
+
+  background-color: #FDFDfd;
+  border-left: solid 1px #E0E0e0;
+  border-right: solid 1px #e0e0e0;
+  border-bottom: solid 1px #e0e0e0;
 }
 
 .panel-title button {

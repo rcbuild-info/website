@@ -254,8 +254,11 @@ def updateBuildIndex():
 
   return Response('ok')
 
-def filtered_shoulds(f, shoulds, size=5):
-  return {"query": {"filtered": {"filter": f, "query": {"bool": {"should": shoulds}}}}, "size": size}
+def filtered_shoulds(f, shoulds, size=5, sort=None, from_=0):
+  query = {"query": {"filtered": {"filter": f, "query": {"bool": {"should": shoulds}}}}, "size": size, "from": from_}
+  if sort:
+    query["sort"] = sort
+  return query
 
 @app.route('/similar/builds/<user>/<branch>')
 def similar_builds(user, branch):
@@ -312,10 +315,10 @@ def similar_builds(user, branch):
     response["others"].append({"user": hit["user"], "branch": hit["branch"]})
   return Response(json.dumps(response))
 
-def get_part_name(part):
-  if "/" not in part:
-    return part
-  split = part.rsplit("/", 1)
+def get_part(partID):
+  if "/" not in partID:
+    return None
+  split = partID.rsplit("/", 1)
   manufacturerID = split[0]
   partID = split[1]
   while manufacturerID in LINKS and partID in LINKS[manufacturerID]:
@@ -323,8 +326,14 @@ def get_part_name(part):
     partID = LINKS[manufacturerID][partID][1]
 
   if manufacturerID in PARTS_BY_ID and partID in PARTS_BY_ID[manufacturerID]:
-    return PARTS_BY_ID[manufacturerID][partID]["manufacturer"] + " " +PARTS_BY_ID[manufacturerID][partID]["name"]
-  return manufacturerID + "/" + partID
+    return PARTS_BY_ID[manufacturerID][partID]
+  return None
+
+def get_part_name(partID):
+  part = get_part(partID)
+  if part:
+    return part["manufacturer"] + " " + part["name"]
+  return partID
 
 def get_build_snippet(build):
   parts = ["frame", "motor", "esc", "fc"]
@@ -335,23 +344,44 @@ def get_build_snippet(build):
              "snippet": part_snippet}
   return snippet
 
-@app.route('/list/builds', defaults={"page": 1})
-@app.route('/list/builds/<page>')
+@app.route('/list/builds', defaults={"page": 1}, methods=["GET", "HEAD", "OPTIONS", "POST"])
 def list_builds(page):
+  if request.method != "POST":
+    return Response(status=requests.codes.method_not_allowed)
+
+  partIDs = json.loads(request.data)
+  shoulds = []
+  for partID in partIDs:
+    part = get_part(partID)
+    category = part["category"]
+    if category == "":
+      for c in partCategories["categories"]:
+        term = {c: {"value": partID}}
+        if "similarBoost" in partCategories["categories"][c]:
+          term[c]["boost"] = partCategories["categories"][c]["similarBoost"]
+        shoulds.append({"term": term})
+    else:
+      term = {category: {"value": partID}}
+      if category in partCategories["categories"] and "similarBoost" in partCategories["categories"][category]:
+        term[category]["boost"] = partCategories["categories"][category]["similarBoost"]
+      shoulds.append({"term": term})
+
   page = int(page)
   searches = []
+  s = []
+  if len(shoulds) > 0:
+    s.append({"_score": {"order": "desc"}})
+  s.append({"timestamp": {"order": "desc"}})
   if "u" in request.cookies and page == 1:
     searches.append({"index": "builds", "doc_type": "buildsnapshot"})
-    searches.append({"filter": {"bool": {"must": [{"term": {"user": request.cookies["u"]}},
-                                   {"missing": {"field": "next_snapshot"}}]}},
-                      "sort": [{"timestamp": {"order": "desc"}}]
-                     })
+    f = {"bool": {"must": [{"term": {"user": request.cookies["u"]}},
+                           {"missing": {"field": "next_snapshot"}}]}}
+    searches.append(filtered_shoulds(f, shoulds, size=100, sort=s))
   searches.append({"index": "builds", "doc_type": "buildsnapshot"})
-  searches.append({"filter": {"missing": {"field": "next_snapshot"}},
-                   "sort": [{"timestamp": {"order": "desc"}}],
-                   "size": 10,
-                   "from": 10 * (page - 1)
-                  })
+
+  f = {"missing": {"field": "next_snapshot"}}
+  searches.append(filtered_shoulds(f, shoulds, size=10, sort=s, from_=10 * (page - 1)))
+
   res = es.msearch(body=searches)
   response = {}
   total_builds = res["responses"][len(res["responses"]) - 1]["hits"]["total"]
@@ -367,9 +397,8 @@ def list_builds(page):
     response["others"].append(get_build_snippet(hit["_source"]))
   return Response(json.dumps(response))
 
-@app.route('/builds/', defaults={"page": 1})
-@app.route('/builds/<page>')
-def builds(page):
+@app.route('/builds')
+def builds():
     return render_template('main.html')
 
 @app.route('/createbuild')

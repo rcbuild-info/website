@@ -19,9 +19,6 @@ class BuildStore {
     this.savedPrimaryBuildVersion = null;
     this.builds = {};
 
-    this.buildList = {};
-    this.currentListPage = null;
-
     this.exportAsync(BuildSource);
     this.bindListeners({
       navigateToPage: SiteActions.navigateToPage,
@@ -39,8 +36,6 @@ class BuildStore {
       setSettings: BuildActions.setSettings,
       loadedSettings: BuildActions.loadedSettings,
       loadSettingsFailed: BuildActions.loadSettingsFailed,
-      loadedBuildList: BuildActions.loadedBuildList,
-      loadBuildListFailed: BuildActions.loadBuildListFailed,
       loadedSimilar: BuildActions.loadedSimilar,
       loadSimilarFailed: BuildActions.loadSimilarFailed
     });
@@ -62,8 +57,6 @@ class BuildStore {
     } else if (pageInfo.page === "builds") {
       this.primaryBuildVersion = null;
       this.secondaryBuildVersion = null;
-      this.currentListPage = pageInfo.listPage;
-      this.getInstance().loadBuildList(pageInfo.listPage);
     }
     if (this.primaryBuildVersion) {
       this.getInstance().loadBuild(this.primaryBuildVersion);
@@ -184,12 +177,6 @@ class BuildStore {
     settings[path[path.length - 1]] = response.data;
   }
   loadSettingsFailed(response) {
-    console.log(response);
-  }
-  loadedBuildList(response) {
-    this.buildList[response.config.listPage] = response.data;
-  }
-  loadBuildListFailed(response) {
     console.log(response);
   }
   loadedSimilar(response) {

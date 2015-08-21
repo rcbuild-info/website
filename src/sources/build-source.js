@@ -96,21 +96,6 @@ export default {
       error: BuildActions.loadSettingsFailed // (required)
     };
   },
-  loadBuildList() {
-    return {
-      // remotely fetch something (required)
-      remote(state, listPage) {
-        if (listPage === undefined) {
-          listPage = 1;
-        }
-        return axios.get("/list/builds/" + listPage, {"listPage": listPage});
-      },
-
-      // here we setup some actions to handle our response
-      success: BuildActions.loadedBuildList, // (required)
-      error: BuildActions.loadBuildListFailed // (required)
-    };
-  },
   loadSimilar() {
     return {
       // remotely fetch something (required)

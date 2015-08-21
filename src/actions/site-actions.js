@@ -23,7 +23,8 @@ class SiteActions {
                                         "key": routeInfo.params.secondaryUser + "/" + routeInfo.params.secondaryBranch + "@HEAD"};
     }
     if (pageInfo.page === "builds") {
-      pageInfo.listPage = routeInfo.params.page;
+      pageInfo.listPage = routeInfo.query.page;
+      pageInfo.parts = routeInfo.query.parts;
     }
     this.dispatch(pageInfo);
   }

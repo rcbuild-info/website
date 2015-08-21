@@ -16,6 +16,7 @@ class PartStore {
 
     this.supportedParts = {};
     this.unsupportedParts = {};
+    this.shortPartsByID = {};
 
     this.registerAsync(PartSource);
     this.bindListeners({
@@ -37,7 +38,7 @@ class PartStore {
     if (page === "build" || page === "editbuild" || page === "compare") {
       this.getInstance().loadCategories();
     }
-    if (page === "editbuild") {
+    if (page === "editbuild" || page === "builds") {
       this.getInstance().loadSupportedPartIndex();
     }
   }
@@ -62,10 +63,21 @@ class PartStore {
       }
     }
   }
+
+  addToShortPartIndex(parts) {
+    for (let manufacturerID of Object.keys(parts)) {
+      for (let partID of Object.keys(parts[manufacturerID])) {
+        let part = parts[manufacturerID][partID];
+        this.shortPartsByID[part.id] = part;
+      }
+    }
+  }
+
   handleLoadedSupportedPartIndex(response) {
     let parts = response.data;
     for(let category of Object.keys(parts)) {
       PartStore.expandParts(parts[category]);
+      this.addToShortPartIndex(parts[category]);
     }
     this.supportedParts = parts;
     this.getInstance().loadUnsupportedPartIndex();
@@ -77,6 +89,7 @@ class PartStore {
     let unsupportedParts = response.data;
     PartStore.filterOutSupportedParts(unsupportedParts);
     PartStore.expandParts(unsupportedParts);
+    this.addToShortPartIndex(unsupportedParts);
     this.unsupportedParts = unsupportedParts;
   }
   handleLoadUnsupportedPartIndexFailed(response) {

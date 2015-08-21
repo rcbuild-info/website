@@ -18,7 +18,7 @@ var routes = (
   <Route handler={RCBuildInfo} name="home" path="/">
     <DefaultRoute handler={HomePage}/>
     <Route handler={CreateBuildPage} name="createbuild" path="createbuild" />
-    <Route handler={BuildList} name="builds" path="builds/:page" />
+    <Route handler={BuildList} name="builds" path="builds" />
     <Route handler={BuildPage} name="build" path="build/:user/:branch" />
     <Route handler={BuildPage} name="editbuild" path="edit/:user/:branch" />
     <Route handler={BuildPage} name="compare" path="/compare/:primaryUser/:primaryBranch/vs/:secondaryUser/:secondaryBranch" />
