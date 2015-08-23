@@ -32,7 +32,10 @@ export default class RCBuildInfo extends React.Component {
     this.componentWillUnmount = this.componentWillUnmount.bind(this);
     this.onBuildChange = this.onBuildChange.bind(this);
     this.onSiteChange = this.onSiteChange.bind(this);
+    this.onCopyText = this.onCopyText.bind(this);
     this.state = SiteStore.getState();
+    this.state.copyText = "";
+    this.state.copyCount = 0;
   }
 
   componentDidMount() {
@@ -65,6 +68,32 @@ export default class RCBuildInfo extends React.Component {
     BuildActions.editBuild();
   }
 
+  onShareText(text) {
+    let newCount = this.state.copyCount;
+    if (text !== this.state.copyText) {
+      newCount = 0;
+    }
+    this.setState({"copyText": text, "copyCount": newCount});
+    React.findDOMNode(this.refs.copyText).focus();
+  }
+
+  onCopyText() {
+    React.findDOMNode(this.refs.copyText).select();
+
+    try {
+      // Now that we've selected the anchor text, execute the copy command
+      var successful = document.execCommand('copy');
+      if (successful) {
+        this.setState({"copyCount": this.state.copyCount + 1});
+      }
+    } catch(err) {
+    }
+
+    // Remove the selections - NOTE: Should use
+    // removeRange(range) when it is supported
+    window.getSelection().removeAllRanges();
+  }
+
   render() {
     let disableEdit = !this.state.loggedInUser ||
                       this.state.page === "createbuild" ||
@@ -84,7 +113,7 @@ export default class RCBuildInfo extends React.Component {
                                      to="compare">{ build.branch }</MenuItemLink>);
         }
         similar.push(<MenuItem divider key="d"/>);
-        similar.push(<MenuItem header key="others">Others'</MenuItem>);
+        similar.push(<MenuItem header key="others">Others</MenuItem>);
       }
       for (let build of this.state.similarBuilds.others) {
         similar.push(<MenuItemLink key={ build.user + "/" + build.branch }
@@ -94,6 +123,24 @@ export default class RCBuildInfo extends React.Component {
                                             "secondaryBranch": build.branch}}
                                    to="compare">{ build.user + "/" + build.branch }</MenuItemLink>);
       }
+    }
+    let share = [];
+    if (this.state.page === "build") {
+      share.push(<MenuItem key="newest" onClick={ this.onShareText.bind(this, "newest") }>Link to newest version</MenuItem>);
+      share.push(<MenuItem key="this" onClick={ this.onShareText.bind(this, "this") }>Link to this version</MenuItem>);
+      share.push(<MenuItem divider key="d"/>);
+      share.push(<li key="text"><input type="text" placeholder="Select a link above" ref="copyText" value={this.state.copyText} readOnly/></li>);
+      let copyText = "Copy";
+      if (this.state.copyCount === 1) {
+        copyText = "Copied!";
+      } else if (this.state.copyCount === 2) {
+        copyText = "Copied again!";
+      } else if (this.state.copyCount === 3) {
+        copyText = "Copied again and again!"
+      } else if (this.state.copyCount > 3){
+        copyText = "Copied " + this.state.copyCount + " times!";
+      }
+      share.push(<MenuItem disabled={this.state.copyText === ""} key="copy" onClick={ this.onCopyText }>{copyText}</MenuItem>);
     }
 
     var logo = <Link to="home"><img src="/static/logo.svg"/></Link>;
@@ -119,6 +166,9 @@ export default class RCBuildInfo extends React.Component {
                 params={{"user": disableEdit ? "" : this.state.primaryBuildVersion.user,
                          "branch": disableEdit ? "" : this.state.primaryBuildVersion.branch}}
                 to="editbuild">Edit</NavItemLink>
+                <DropdownButton disabled={share.length === 0} eventKey={1} key="share" title="Share">
+                  {share}
+                </DropdownButton>
               {login}
             </Nav>
           </CollapsibleNav>

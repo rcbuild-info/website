@@ -43,6 +43,12 @@ body {
   overflow: visible;
 }
 
+.dropdown-menu>li>input {
+  margin: 3px 20px;
+  background-color: #fdfdfd;
+  color: #337ab7;
+}
+
 .category {
   background-color: #eeeeee;
   color: #444444;
