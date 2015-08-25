@@ -11,7 +11,13 @@ export default {
     return {
       // remotely fetch something (required)
       remote(state, buildVersion) {
-        return axios.get("/build/" + buildVersion.user + "/" + buildVersion.branch + ".json", {"buildVersion": buildVersion});
+        let params = {};
+        if (buildVersion.commit &&
+            buildVersion.commit !== "HEAD" &&
+            buildVersion.commit !== "staged") {
+          params.commit = buildVersion.commit;
+        }
+        return axios.get("/build/" + buildVersion.user + "/" + buildVersion.branch + ".json", {"buildVersion": buildVersion, "params": params});
       },
 
       // this function checks in our local cache first
@@ -87,8 +93,12 @@ export default {
     return {
       // remotely fetch something (required)
       remote(state, settingInfo, filename) {
-        return axios.get("/build/" + settingInfo.buildVersion.user + "/" + settingInfo.buildVersion.branch + "/" + filename,
-                        {"settingInfo": settingInfo});
+        let params = {};
+        if (settingInfo.buildVersion.commit && settingInfo.buildVersion.commit !== "HEAD") {
+          params.commit = settingInfo.buildVersion.commit;
+        }
+        return axios.get("/file/" + settingInfo.buildVersion.user + "/" + settingInfo.buildVersion.branch + "/" + filename,
+                        {"settingInfo" : settingInfo, "params": params});
       },
 
       // here we setup some actions to handle our response
@@ -100,7 +110,11 @@ export default {
     return {
       // remotely fetch something (required)
       remote(state, buildVersion) {
-        return axios.get("/similar/builds/" + buildVersion.user + "/" + buildVersion.branch, {"buildVersion": buildVersion});
+        let params = {};
+        if (buildVersion.commit && buildVersion.commit !== "HEAD") {
+          params.commit = buildVersion.commit;
+        }
+        return axios.get("/similar/builds/" + buildVersion.user + "/" + buildVersion.branch, {"buildVersion": buildVersion, "params": params});
       },
 
       // here we setup some actions to handle our response

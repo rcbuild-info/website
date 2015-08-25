@@ -12,15 +12,21 @@ class SiteActions {
     if (pageInfo.page === "build" || pageInfo.page === "editbuild") {
       pageInfo.primaryBuildVersion = {"user": routeInfo.params.user,
                                       "branch": routeInfo.params.branch,
-                                      "key": routeInfo.params.user + "/" + routeInfo.params.branch + "@HEAD"};
+                                      "commit": routeInfo.params.commit || "HEAD",
+                                      "isHead": routeInfo.params.commit === undefined || routeInfo.params.commit === "" || routeInfo.params.commit === "HEAD",
+                                      "key": routeInfo.params.user + "/" + routeInfo.params.branch + "@" + (routeInfo.params.commit || "HEAD")};
     }
     if (pageInfo.page === "compare") {
       pageInfo.primaryBuildVersion = {"user": routeInfo.params.primaryUser,
                                       "branch": routeInfo.params.primaryBranch,
-                                      "key": routeInfo.params.primaryUser + "/" + routeInfo.params.primaryBranch + "@HEAD"};
+                                      "commit": routeInfo.params.primaryCommit,
+                                      "isHead": routeInfo.params.commit === undefined || routeInfo.params.commit === "" || routeInfo.params.primaryCommit === "HEAD",
+                                      "key": routeInfo.params.primaryUser + "/" + routeInfo.params.primaryBranch + "@" + routeInfo.params.primaryCommit};
       pageInfo.secondaryBuildVersion = {"user": routeInfo.params.secondaryUser,
                                         "branch": routeInfo.params.secondaryBranch,
-                                        "key": routeInfo.params.secondaryUser + "/" + routeInfo.params.secondaryBranch + "@HEAD"};
+                                        "commit": routeInfo.params.secondaryCommit,
+                                        "isHead": routeInfo.params.secondaryCommit === "HEAD",
+                                        "key": routeInfo.params.secondaryUser + "/" + routeInfo.params.secondaryBranch + "@" + routeInfo.params.secondaryCommit};
     }
     if (pageInfo.page === "builds") {
       pageInfo.listPage = routeInfo.query.page;

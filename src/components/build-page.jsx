@@ -22,6 +22,8 @@ import SiteStore from "../stores/site-store";
 
 import ButtonLink from "react-router-bootstrap/lib/ButtonLink";
 
+import clone from "clone";
+
 export default class BuildPage extends React.Component {
   constructor() {
     super();
@@ -61,6 +63,17 @@ export default class BuildPage extends React.Component {
     let primaryBuild;
     let ownerLoggedIn = false;
     let share = this.state.share;
+    if (this.state.primaryBuildVersion &&
+        state.primaryBuildVersion &&
+        this.state.primaryBuildVersion.user === state.primaryBuildVersion.user &&
+        this.state.primaryBuildVersion.branch === state.primaryBuildVersion.branch &&
+        this.state.primaryBuildVersion.commit !== state.primaryBuildVersion.commit &&
+        !state.primaryBuildVersion.isHead) {
+      this.context.router.replaceWith("build",
+        {"user": state.primaryBuildVersion.user,
+         "branch": state.primaryBuildVersion.branch,
+         "commit": state.primaryBuildVersion.commit.slice(0, 8)});
+    }
     if (state.primaryBuildVersion) {
       ownerLoggedIn = this.state.loggedInUser === state.primaryBuildVersion.user;
       primaryBuild = state.builds[state.primaryBuildVersion.key];
@@ -80,7 +93,7 @@ export default class BuildPage extends React.Component {
     }
     this.setState({"ownerLoggedIn": ownerLoggedIn,
                    "primaryBuild": primaryBuild,
-                   "primaryBuildVersion": state.primaryBuildVersion,
+                   "primaryBuildVersion": clone(state.primaryBuildVersion),
                    "secondaryBuild": secondaryBuild,
                    "secondaryBuildVersion": state.secondaryBuildVersion,
                    "share": share});
@@ -115,7 +128,7 @@ export default class BuildPage extends React.Component {
     }
 
     // TODO(tannewt): Link to all of the builds by a user here.
-    let primaryBuildName = this.state.primaryBuildVersion.user + "/" + this.state.primaryBuildVersion.branch;
+    let primaryBuildName = this.state.primaryBuildVersion.user + "/" + this.state.primaryBuildVersion.branch + (this.state.primaryBuildVersion.isHead ? "" : "@" + this.state.primaryBuildVersion.commit.slice(0, 8));
 
     if (this.state.primaryBuild.state === "exists" ||
         this.state.primaryBuild.state === "unsaved" ||
@@ -128,8 +141,10 @@ export default class BuildPage extends React.Component {
                         <ButtonGroup fill justified>
                           <ButtonLink bsStyle="success"
                                   disabled={this.state.primaryBuild.state !== "unsaved"}
-                                  onClick={this.onSaveBuild} params={{"user": this.state.primaryBuildVersion.user, "branch": this.state.primaryBuildVersion.branch}} to="build">Save changes</ButtonLink>
-                          <ButtonLink bsStyle="danger" onClick={this.onDiscardChanges} params={{"user": this.state.primaryBuildVersion.user, "branch": this.state.primaryBuildVersion.branch}} to="build">Discard Changes</ButtonLink>
+                                  onClick={this.onSaveBuild} params={{"user": this.state.primaryBuildVersion.user, "branch": this.state.primaryBuildVersion.branch,
+                                "commit": ""}} to="build">Save changes</ButtonLink>
+                          <ButtonLink bsStyle="danger" onClick={this.onDiscardChanges} params={{"user": this.state.primaryBuildVersion.user, "branch": this.state.primaryBuildVersion.branch,
+                          "commit": ""}} to="build">Discard Changes</ButtonLink>
                         </ButtonGroup>
                       </Panel>
                     </Col>
@@ -157,15 +172,17 @@ export default class BuildPage extends React.Component {
       if (this.state.secondaryBuild) {
         secondaryParts = this.state.secondaryBuild.parts;
         secondaryFcSettings = this.state.secondaryBuild.settings.fc;
-        let secondaryBuildName = this.state.secondaryBuildVersion.user + "/" + this.state.secondaryBuildVersion.branch;
+        let secondaryBuildName = this.state.secondaryBuildVersion.user + "/" + this.state.secondaryBuildVersion.branch + (this.state.secondaryBuildVersion.isHead ? "" : "@" + this.state.secondaryBuildVersion.commit.slice(0, 8));
         header = (<PageHeader>
                     <small>
                       <Link params={{"user": this.state.primaryBuildVersion.user,
-                                     "branch": this.state.primaryBuildVersion.branch}} to="build">
+                                     "branch": this.state.primaryBuildVersion.branch,
+                                     "commit": this.state.primaryBuildVersion.commit}} to="build">
                         {primaryBuildName}
                       </Link> vs </small>
                     <Link params={{"user": this.state.secondaryBuildVersion.user,
-                                   "branch": this.state.secondaryBuildVersion.branch}} to="build">
+                                   "branch": this.state.secondaryBuildVersion.branch,
+                                   "commit": this.state.primaryBuildVersion.commit}} to="build">
                       {secondaryBuildName}
                     </Link>
                   </PageHeader>);

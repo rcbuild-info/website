@@ -98,6 +98,7 @@ export default class RCBuildInfo extends React.Component {
     let disableEdit = !this.state.loggedInUser ||
                       this.state.page === "createbuild" ||
                       !this.state.primaryBuildVersion ||
+                      !this.state.primaryBuildVersion.isHead ||
                       this.state.loggedInUser !== this.state.primaryBuildVersion.user;
 
     let similar = [];
@@ -108,8 +109,10 @@ export default class RCBuildInfo extends React.Component {
           similar.push(<MenuItemLink key={ build.user + "/" + build.branch }
                                      params={{"primaryUser": this.state.primaryBuildVersion.user,
                                               "primaryBranch": this.state.primaryBuildVersion.branch,
+                                              "primaryCommit": this.state.primaryBuildVersion.isHead? "HEAD" : this.state.primaryBuildVersion.commit.slice(0, 8),
                                               "secondaryUser": build.user,
-                                              "secondaryBranch": build.branch}}
+                                              "secondaryBranch": build.branch,
+                                              "secondaryCommit": "HEAD"}}
                                      to="compare">{ build.branch }</MenuItemLink>);
         }
         similar.push(<MenuItem divider key="d"/>);
@@ -119,17 +122,20 @@ export default class RCBuildInfo extends React.Component {
         similar.push(<MenuItemLink key={ build.user + "/" + build.branch }
                                    params={{"primaryUser": this.state.primaryBuildVersion.user,
                                             "primaryBranch": this.state.primaryBuildVersion.branch,
+                                            "primaryCommit": this.state.primaryBuildVersion.commit.slice(0, 8),
                                             "secondaryUser": build.user,
-                                            "secondaryBranch": build.branch}}
+                                            "secondaryBranch": build.branch,
+                                            "secondaryCommit": "HEAD"}}
                                    to="compare">{ build.user + "/" + build.branch }</MenuItemLink>);
       }
     }
     let share = [];
-    if (this.state.page === "build") {
-      share.push(<MenuItem key="newest" onClick={ this.onShareText.bind(this, "newest") }>Link to newest version</MenuItem>);
-      share.push(<MenuItem key="this" onClick={ this.onShareText.bind(this, "this") }>Link to this version</MenuItem>);
+    if (this.state.page === "build" && this.state.primaryBuildVersion) {
+      let version = this.state.primaryBuildVersion;
+      share.push(<MenuItem key="newest" onClick={ this.onShareText.bind(this, "https://rcbuild.info/build/" + version.user + "/" + version.branch + "/") }>Link to newest version</MenuItem>);
+      share.push(<MenuItem key="this" onClick={ this.onShareText.bind(this, "https://rcbuild.info/build/" + version.user + "/" + version.branch + "/" + version.commit.slice(0,8)) }>Link to this version</MenuItem>);
       share.push(<MenuItem divider key="d"/>);
-      share.push(<li key="text"><input type="text" placeholder="Select a link above" ref="copyText" value={this.state.copyText} readOnly/></li>);
+      share.push(<li key="text"><input placeholder="Select a link above" readOnly ref="copyText"  type="text" value={this.state.copyText} /></li>);
       let copyText = "Copy";
       if (this.state.copyCount === 1) {
         copyText = "Copied!";

@@ -263,7 +263,12 @@ def filtered_shoulds(f, shoulds, size=5, sort=None, from_=0):
 
 @app.route('/similar/builds/<user>/<branch>')
 def similar_builds(user, branch):
-  build = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=refs/heads/" + urllib.quote_plus(branch), {"accept": "application/vnd.github.v3.raw"}, use_cache_even_when_logged_in=True)
+  ref = None
+  if "commit" in request.args:
+    ref = request.args["commit"]
+  else:
+    ref = "refs/heads/" + urllib.quote_plus(branch)
+  build = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"}, use_cache_even_when_logged_in=True)
   if build.status_code != requests.codes.ok:
     return Response(status=requests.codes.server_error)
   build = json.loads(build.get_data(True))
@@ -415,9 +420,21 @@ def editbuild(username, repo):
 def comparebuild(primaryUsername, primaryBranch, secondaryUsername, secondaryBranch):
   return render_template('main.html')
 
-@app.route('/build/<username>/<branch>')
+@app.route('/compare/<primaryUsername>/<primaryBranch>/<primaryCommit>/vs/<secondaryUsername>/<secondaryBranch>/<secondaryCommit>')
+def comparebuildcommits(primaryUsername, primaryBranch, primaryCommit, secondaryUsername, secondaryBranch, secondaryCommit):
+  return render_template('main.html')
+
+@app.route('/build/<username>/<branch>/<commit>')
+def buildCommit(username, branch, commit):
+    return render_template('main.html')
+
+@app.route('/build/<username>/<branch>/')
 def build(username, branch):
     return render_template('main.html')
+
+@app.route('/build/<username>/<branch>')
+def oldBuild(username, branch):
+    return redirect("/build/" + username + "/" + branch + "/")
 
 def get_github(url, headers={}, use_cache_even_when_logged_in=False, skip_cache=False):
   has_if = False
@@ -600,7 +617,7 @@ def create_fork_and_branch(user, branch):
       print(599, result.status_code)
       print(600, result.text)
       return Response(status=requests.codes.server_error)
-  return Response()
+  return Response(json.dumps({"commit": master_sha}))
 
 def new_commit(user, branch, tree, message):
   # Get the sha of the current commit at head.
@@ -655,7 +672,7 @@ def new_commit(user, branch, tree, message):
     print(654, result.text)
     return Response(status=requests.codes.server_error)
 
-  return Response()
+  return Response(json.dumps({"commit": new_commit_sha}))
 
 def update_build(user, branch):
   if int(request.headers["Content-Length"]) > 2048:
@@ -667,14 +684,55 @@ def update_build(user, branch):
                "content": new_build_contents}]
   return new_commit(user, branch, new_tree, "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".")
 
-
 @app.route('/build/<user>/<branch>.json', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def build_json(user, branch):
   if request.method == "GET":
-    build = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=refs/heads/" + urllib.quote_plus(branch), {"accept": "application/vnd.github.v3.raw"})
-    if build.status_code in [requests.codes.ok, requests.codes.not_modified]:
-      return build
-    return Response(status=requests.codes.not_found)
+    searchbody = None
+    if "commit" in request.args:
+      searchbody = {"query":{"bool":{"must":[{"prefix":{"buildsnapshot.commits":request.args["commit"]}}],"must_not":[],"should":[]}},"size":1,"sort":[{"timestamp": {"order": "desc"}}]}
+    else:
+      searchbody = {
+        "query": {
+          "bool": {
+            "must": [
+              {"term":{"buildsnapshot.branch":branch}},
+              {"term":{"buildsnapshot.user":user}},
+              {"constant_score":
+                {"filter":
+                  {"missing":
+                    {"field":"buildsnapshot.next_snapshot"}}}}],
+            "must_not":[],
+            "should":[]}},
+        "size":1,
+        "sort":[{"timestamp": {"order": "desc"}}]}
+    res = es.search(index="builds", doc_type="buildsnapshot", body=searchbody)
+
+    if res["hits"]["total"] == 1:
+      build = res["hits"]["hits"][0]["_source"]
+      r = Response(json.dumps(build))
+      return r
+
+    # Fallback to looking in github.ref = None
+    ref = None
+    if "commit" in request.args:
+      ref = request.args["commit"]
+    else:
+      ref = "refs/heads/" + urllib.quote_plus(branch)
+    gh = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
+    if gh.status_code != requests.codes.ok:
+      return Response(status=requests.codes.not_found)
+
+    result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch))
+    if result.status_code != requests.codes.ok:
+      print(727, result.status_code)
+      print(728, result.text)
+      return Response(status=requests.codes.server_error)
+    branch_info = json.loads(result.text)
+    latest_commit_sha = branch_info["object"]["sha"]
+
+    parts = json.loads(gh.get_data(True))
+    build = {"commits": [latest_commit_sha], "build": parts}
+    return Response(json.dumps(build))
   elif request.method == "POST":
     return create_fork_and_branch(user, branch)
 
@@ -703,9 +761,14 @@ def setting_upload(user, branch):
   # TODO(tannewt): Ensure that the file contents are from cleanflight.
   return new_commit(user, branch, new_tree, "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".")
 
-@app.route('/build/<user>/<branch>/<filename>')
+@app.route('/file/<user>/<branch>/<filename>')
 def config_json(user, branch, filename):
-    return get_github("repos/" + user + "/rcbuild.info-builds/contents/" + filename + "?ref=refs/heads/" + urllib.quote_plus(branch), {"accept": "application/vnd.github.v3.raw"})
+  ref = None
+  if "commit" in request.args:
+    ref = request.args["commit"]
+  else:
+    ref = "refs/heads/" + urllib.quote_plus(branch)
+  return get_github("repos/" + user + "/rcbuild.info-builds/contents/" + filename + "?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
 
 def updatePartCategoriesHelper():
   global partCategories_string

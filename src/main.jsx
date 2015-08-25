@@ -13,15 +13,17 @@ import SiteActions from "./actions/site-actions";
 import Router from "react-router";
 var Route = Router.Route;
 var DefaultRoute = Router.DefaultRoute;
+var Redirect = Router.Redirect;
 
 var routes = (
   <Route handler={RCBuildInfo} name="home" path="/">
     <DefaultRoute handler={HomePage}/>
     <Route handler={CreateBuildPage} name="createbuild" path="createbuild" />
     <Route handler={BuildList} name="builds" path="builds" />
-    <Route handler={BuildPage} name="build" path="build/:user/:branch" />
+    <Route handler={BuildPage} name="build" path="build/:user/:branch/:commit?" />
     <Route handler={BuildPage} name="editbuild" path="edit/:user/:branch" />
-    <Route handler={BuildPage} name="compare" path="/compare/:primaryUser/:primaryBranch/vs/:secondaryUser/:secondaryBranch" />
+    <Route handler={BuildPage} name="compare" path="/compare/:primaryUser/:primaryBranch/:primaryCommit/vs/:secondaryUser/:secondaryBranch/:secondaryCommit" />
+    <Redirect from="/compare/:primaryUser/:primaryBranch/vs/:secondaryUser/:secondaryBranch" to="compare" />
     <Route handler={SupportedParts} name="supportedparts" path="parts/supported" />
     <Route handler={AllParts} name="allparts" path="parts/all" />
   </Route>);

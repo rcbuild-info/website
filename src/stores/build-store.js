@@ -54,7 +54,7 @@ class BuildStore {
       } else {
         this.secondaryBuildVersion = null;
       }
-    } else if (pageInfo.page === "builds") {
+    } else if (pageInfo.page === "builds" || pageInfo.page === undefined) {
       this.primaryBuildVersion = null;
       this.secondaryBuildVersion = null;
     }
@@ -80,7 +80,7 @@ class BuildStore {
     this.savedPrimaryBuildVersion = clone(this.primaryBuildVersion);
     this.primaryBuildVersion.commit = "staged";
     this.primaryBuildVersion.key = this.primaryBuildVersion.user + "/" + this.primaryBuildVersion.branch + "@staged";
-    this.builds[this.primaryBuildVersion] = this.builds[this.savedPrimaryBuildVersion.key];
+    this.builds[this.primaryBuildVersion.key] = clone(this.builds[this.savedPrimaryBuildVersion.key]);
   }
   setBuildPart(change) {
     let build = this.builds[this.primaryBuildVersion.key];
@@ -104,18 +104,27 @@ class BuildStore {
     let stagedKey = this.primaryBuildVersion.key;
     ga("send", "event", "build", "save", stagedKey);
     this.builds[stagedKey].state = "saving";
-    this.getInstance().saveBuild(this.savedPrimaryBuildVersion, this.builds[stagedKey]);
+    this.getInstance().saveBuild(this.primaryBuildVersion, this.builds[stagedKey]);
   }
   discardBuild() {
+    delete this.builds[this.primaryBuildVersion];
     this.primaryBuildVersion = this.savedPrimaryBuildVersion;
     this.savedPrimaryBuildVersion = null;
   }
   savedBuild(response) {
+    let buildVersion = response.config.buildVersion;
+    buildVersion.commit = response.data.commit.slice(0, 8);
+    let stagedKey = buildVersion.key;
+    buildVersion.key = buildVersion.key.replace("staged", buildVersion.commit);
     ga("send", "event", "build", "saved", this.primaryBuildVersion.key);
-    this.builds[this.savedPrimaryBuildVersion.key] = this.builds[this.primaryBuildVersion.key];
-    this.discardBuild();
-    let key = response.config.buildVersion.key;
-    this.builds[key].state = "exists";
+    this.builds[buildVersion.key] = this.builds[stagedKey];
+    this.builds[buildVersion.key].state = "exists";
+    for (let alias of ["HEAD"]) {
+      this.builds[buildVersion.key.replace(buildVersion.commit, alias)] = this.builds[buildVersion.key];
+    }
+    this.primaryBuildVersion = buildVersion;
+    this.savedPrimaryBuildVersion = null;
+    this.getInstance().loadSimilar(buildVersion);
   }
   saveBuildFailed(response) {
     ga("send", "event", "build", "saveFailed", response.config.buildVersion.key);
@@ -126,8 +135,15 @@ class BuildStore {
     this.getInstance().createBuild(buildVersion);
   }
   createdBuild(response) {
-    ga("send", "event", "build", "created", response.config.buildVersion.user + "/" + response.config.buildVersion.branch);
-    this.getInstance().loadBuild(response.config.buildVersion);
+    let buildVersion = response.config.buildVersion;
+    if (this.primaryBuildVersion &&
+        this.primaryBuildVersion.user === buildVersion.user &&
+        this.primaryBuildVersion.branch === buildVersion.branch) {
+      this.primaryBuildVersion.commit = response.data.commit.slice(0, 8);
+      this.primaryBuildVersion.key = this.primaryBuildVersion.key.replace("staged", this.primaryBuildVersion.commit);
+    }
+    ga("send", "event", "build", "created", buildVersion.user + "/" + buildVersion.branch);
+    this.getInstance().loadBuild(this.primaryBuildVersion);
   }
   createBuildFailed(response) {
     ga("send", "event", "build", "createFailed", response.config.buildVersion.user + "/" + response.config.buildVersion.branch);
@@ -137,26 +153,59 @@ class BuildStore {
     this.getInstance().loadBuild(buildVersion);
   }
   loadedBuild(response) {
+    let buildVersion = response.config.buildVersion;
     if (typeof response.data === "string" || response.data instanceof String) {
-      this.builds[response.config.buildVersion.key] = {"state": "invalid"};
+      this.builds[buildVersion.key] = {"state": "invalid"};
       return;
     }
-    this.builds[response.config.buildVersion.key] = {
+    if (buildVersion.commit.length < 40) {
+      let oldKey = buildVersion.key.slice(0);
+      let oldCommit = buildVersion.commit;
+      // If we loaded a staged version save a copy under staged and also under
+      // the commit.
+      let commit = response.data.commits[response.data.commits.length - 1].slice(0, 8);
+      if (oldCommit === "staged") {
+        this.builds[buildVersion.key] = clone({
+          "state": "exists",
+          "dirty": {},
+          "parts": response.data.build,
+          "settings": {"fc": undefined},
+          "similar": {},
+          "this_snapshot": buildVersion.commit,
+          "previous_snapshot": commit
+        });
+      }
+      if (this.savedPrimaryBuildVersion) {
+        buildVersion = this.savedPrimaryBuildVersion;
+        oldCommit = buildVersion.commit;
+      }
+      buildVersion.commit = commit;
+      buildVersion.key = buildVersion.key.replace(oldCommit, commit);
+    }
+    this.builds[buildVersion.key] = {
       "state": "exists",
       "dirty": {},
-      "parts": response.data,
+      "parts": response.data.build,
       "settings": {"fc": undefined},
-      "similar": {}
+      "similar": {},
+      "this_snapshot": buildVersion.commit
     };
 
-    let config = response.data.config;
+    // If this is a head build then also store under the HEAD key.
+    if (buildVersion.isHead) {
+      for (let alias of ["HEAD"]) {
+        this.builds[buildVersion.key.replace(buildVersion.commit, alias)] = this.builds[buildVersion.key];
+      }
+    }
+
+    let config = response.data.build.config;
     for (let category of Object.keys(config)) {
       this.loadParts(config[category]);
     }
     this.getInstance().loadSettingsFile({"path": ["fc", "cf_cli"],
-                                         "buildVersion": response.config.buildVersion},
+                                         "buildVersion": buildVersion},
                                         "cleanflight_cli_dump.txt");
-    this.getInstance().loadSimilar(response.config.buildVersion);
+    this.getInstance().loadSimilar(buildVersion);
   }
   loadBuildFailed(response) {
     if (response.status === 404) {
