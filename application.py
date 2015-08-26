@@ -24,6 +24,8 @@ application = app = Flask(__name__)
 sslify = SSLify(app, skips=["healthz"])
 app.config['GITHUB_CLIENT_ID'] = os.environ['GITHUB_CLIENT_ID']
 app.config['GITHUB_CLIENT_SECRET'] = os.environ['GITHUB_CLIENT_SECRET']
+app.config['GITHUB_BASE_URL'] = os.environ['GITHUB_BASE_URL']
+app.config['GITHUB_AUTH_URL'] = os.environ['GITHUB_AUTH_URL']
 app.config['PROPAGATE_EXCEPTIONS'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 365 * 24 * 60 * 60
 app.secret_key = os.environ['SESSION_SECRET_KEY']
