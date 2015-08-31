@@ -149,13 +149,13 @@ def updateBuildIndex():
       print(push_info["repository"])
       abort(403)
     user = push_info["repository"]["owner"]["name"]
-    if not app.debug:
-      res = es.get(index='private', doc_type='githubsecret', id=user)
-      if not res["found"]:
-        abort(403)
-      h = hmac.new(str(res["_source"]["secret"]), request.data, sha1)
-      if not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
-        abort(403)
+
+    res = es.get(index='private', doc_type='githubsecret', id=user)
+    if not res["found"]:
+      abort(403)
+    h = hmac.new(str(res["_source"]["secret"]), request.data, sha1)
+    if not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+      abort(403)
 
     branch = push_info["ref"][len("refs/heads/"):]
 
@@ -487,7 +487,7 @@ def set_login_info(response, oauth_token):
   user_info = get_github("user", {})
   user_info = json.loads(user_info.get_data(True))
   # Insecure cookie is OK when testing
-  secure = "TEST_GITHUB_TOKEN" not in os.environ
+  secure = not app.debug
   response.set_cookie('u', user_info["login"], max_age=365 * 24 * 60 * 60, secure=secure)
   return response
 
@@ -498,7 +498,10 @@ def login():
     r = redirect(next_url)
     r = set_login_info(r, os.environ["TEST_GITHUB_TOKEN"])
     return r
-  return github.authorize(scope="public_repo", redirect_uri="https://rcbuild.info" + url_for('authorized') + "?next=" + request.args.get('next'))
+  server = "https://rcbuild.info"
+  if app.debug:
+    server = "http://127.0.0.1:5000"
+  return github.authorize(scope="public_repo", redirect_uri=server + url_for('authorized') + "?next=" + request.args.get('next'))
 
 @app.route('/logout')
 def logout():
@@ -557,11 +560,16 @@ def create_fork_and_branch(user, branch):
   # Double check we have setup the webhook
   result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/hooks")
   if result.status_code != requests.codes.ok:
+    print("get webhooks failed", result.status_code)
     return Response(status=requests.codes.server_error)
   all_hooks = json.loads(result.text)
   hook_exists = False
+  domain = "https://rcbuild.info"
+  if app.debug:
+    domain = "http://127.0.0.1:5000"
+  hook_url = domain + "/update/buildIndex"
   for hook in all_hooks:
-    if hook["config"]["url"] == "https://rcbuild.info/update/buildIndex":
+    if hook["config"]["url"] == hook_url:
       hook_exists = True
       break
 
@@ -570,20 +578,21 @@ def create_fork_and_branch(user, branch):
     b64_secret = base64.b64encode(secret)
     res = es.index(index="private", doc_type="githubsecret", id=user, body={"secret": b64_secret})
     if not res["created"] and res["_version"] < 1:
+      print("put githubsecret failed")
       return Response(status=requests.codes.server_error)
 
     hook = {"name": "web",
             "config": {
-              "url": "https://rcbuild.info/update/buildIndex",
+              "url": hook_url,
               "content_type": "json",
               "secret": b64_secret
             },
             "events": ["push"],
             "active": True}
-    result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/hooks", data=json.dumps(hook))
+    result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/hooks", data=json.dumps(hook), headers={"Content-Type": "application/json"})
     if result.status_code != requests.codes.created:
-      print(565, result.status_code)
-      print(566, result.text)
+      print(611, result.status_code)
+      print(612, result.text)
       return Response(status=requests.codes.server_error)
 
   # Get all branches for the repo.
@@ -602,7 +611,7 @@ def create_fork_and_branch(user, branch):
     return Response(status=requests.codes.server_error)
 
   # Create a new branch for this build starting at heads/master.
-  result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/git/refs", data=json.dumps({"ref": "refs/heads/" + branch, "sha": master_sha}))
+  result = github.raw_request("POST", "repos/" + user + "/rcbuild.info-builds/git/refs", data=json.dumps({"ref": "refs/heads/" + branch, "sha": master_sha}), headers={"Content-Type": "application/json"})
   if result.status_code != requests.codes.created:
     print(587, result.status_code)
     print(588, result.text)
@@ -614,7 +623,8 @@ def create_fork_and_branch(user, branch):
                                 "repos/" + user + "/rcbuild.info-builds",
                                 data=json.dumps({"name": "rcbuild.info-builds",
                                             "default_branch": branch,
-                                            "homepage": "https://rcbuild.info/builds/" + user}))
+                                            "homepage": "https://rcbuild.info/builds/" + user}),
+                                headers={"Content-Type": "application/json"})
     if result.status_code != requests.codes.ok:
       print(599, result.status_code)
       print(600, result.text)
@@ -644,7 +654,8 @@ def new_commit(user, branch, tree, message):
                               data=json.dumps(
                                 {"base_tree": last_tree_sha,
                                  "tree": tree
-                                }))
+                                }),
+                              headers={"Content-Type": "application/json"})
   if result.status_code != requests.codes.created:
     print(629, result.status_code)
     print(630, result.text)
@@ -657,7 +668,8 @@ def new_commit(user, branch, tree, message):
                               data=json.dumps(
                                 {"message": message,
                                  "parents": [latest_commit_sha],
-                                 "tree": new_tree_sha}))
+                                 "tree": new_tree_sha}),
+                              headers={"Content-Type": "application/json"})
   if result.status_code != requests.codes.created:
     print(642, result.status_code)
     print(643, result.text)
@@ -668,7 +680,8 @@ def new_commit(user, branch, tree, message):
   result = github.raw_request("POST",
                               "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch),
                               data=json.dumps(
-                                {"sha": new_commit_sha}))
+                                {"sha": new_commit_sha}),
+                              headers={"Content-Type": "application/json"})
   if result.status_code != requests.codes.ok:
     print(653, result.status_code)
     print(654, result.text)
