@@ -17,6 +17,15 @@ git clone https://github.com/rcbuild-info/part-skeleton.git $LOCAL_GITHUB_REPO_D
 git clone https://github.com/rcbuild-info/parts.git $LOCAL_GITHUB_REPO_DIRECTORY/rcbuild-info/parts
 git clone https://github.com/rcbuild-info/rcbuild.info-builds.git $LOCAL_GITHUB_REPO_DIRECTORY/rcbuild-info/rcbuild.info-builds
 
+# Add hooks so that local-github is called back.
+# TODO(tannewt): Should local-github handle cloning and this for us?
+echo "curl \"http://localhost:6178/hook/post-commit?sha=\`git log -1 --format=format:%H\`&user=rcbuild-info&repo=part-skeleton\"" > $LOCAL_GITHUB_REPO_DIRECTORY/rcbuild-info/part-skeleton/.git/hooks/post-commit
+chmod +x $LOCAL_GITHUB_REPO_DIRECTORY/rcbuild-info/part-skeleton/.git/hooks/post-commit
+echo "curl \"http://localhost:6178/hook/post-commit?sha=\`git log -1 --format=format:%H\`&user=rcbuild-info&repo=parts\"" > $LOCAL_GITHUB_REPO_DIRECTORY/rcbuild-info/parts/.git/hooks/post-commit
+chmod +x $LOCAL_GITHUB_REPO_DIRECTORY/rcbuild-info/parts/.git/hooks/post-commit
+echo "curl \"http://localhost:6178/hook/post-commit?sha=\`git log -1 --format=format:%H\`&user=rcbuild-info&repo=rcbuild.info-builds\"" > $LOCAL_GITHUB_REPO_DIRECTORY/rcbuild-info/rcbuild.info-builds/.git/hooks/post-commit
+chmod +x $LOCAL_GITHUB_REPO_DIRECTORY/rcbuild-info/rcbuild.info-builds/.git/hooks/post-commit
+
 # Clone any other users' build repos here you want to start with. Loading will
 # work but they won't show up in the build list until you change it and the
 # webhook adds it to the elasticsearch backend.
