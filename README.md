@@ -17,6 +17,6 @@ To get rcbuild.info going run steps 3-6 in separate tabs. Once running it will b
 2. `source development.env`
 3. `elasticsearch --http.cors.enabled=true` - Runs on port 9200 by default.
 4. `node local-github.js` - Runs on port 6178 by default.
-5. `grunt watch`
-6. `python2 application.py` - Runs on port 5000 by default.
-7. `init-rcbuild.sh` - Optional after the first time.
+5. `init-rcbuild.sh` - Optional after the first time.
+6. `grunt watch`
+7. `python2 application.py` - Runs on port 5000 by default.

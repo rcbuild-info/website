@@ -23,6 +23,7 @@ export default class BuildParts extends React.Component {
     var parts = [];
     if (this.props.partStore.categories && this.props.primaryParts) {
       var partCategories = Object.keys(this.props.primaryParts.config);
+      partCategories = partCategories.filter(function(element) { return element in this.props.partStore.categories; }, this);
       partCategories.sort(function(a, b) { return this.props.partStore.categories[a].order - this.props.partStore.categories[b].order; }.bind(this));
       for (var i in partCategories) {
         var category = partCategories[i];

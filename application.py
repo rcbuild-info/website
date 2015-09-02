@@ -791,8 +791,12 @@ def updatePartCategoriesHelper():
 
   resp = get_github("repos/rcbuild-info/part-skeleton/contents/partCategories.json", {"accept": "application/vnd.github.v3.raw"}, skip_cache=True)
 
+  try:
+    partCategories = json.loads(resp.get_data(True))
+  except:
+    print("Failed to parse partCategories.json")
+    return
   partCategories_string = resp.get_data(True)
-  partCategories = json.loads(partCategories_string)
 
 @app.route('/update/partCategories', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def updatePartCategories():
@@ -810,11 +814,53 @@ def updatePartCategories():
 def part_categories():
     return Response(partCategories_string)
 
+def updateMapping(mapping, skeleton):
+  for key in skeleton:
+    if isinstance(skeleton[key], dict):
+      if key not in mapping:
+        mapping[key] = {"properties" : {}, "dynamic": False}
+      updateMapping(mapping[key]["properties"], skeleton[key])
+    elif key in mapping:
+      continue
+    elif isinstance(skeleton[key], int):
+      mapping[key] = {"type": "integer"}
+    else:
+      mapping[key] = {"type": "string", "index": "not_analyzed"}
+      # TODO(tannewt): Create key + "_fuzzy" fields that are analyzed.
+
+def updateBuildSkeletonHelper():
+  global buildSkeleton
+
+  resp = get_github("repos/rcbuild-info/rcbuild.info-builds/contents/build.json", {"accept": "application/vnd.github.v3.raw"}, skip_cache=True)
+
+  buildSkeleton = json.loads(resp.get_data(True))
+  indices = elasticsearch.client.IndicesClient(es)
+  mapping = indices.get_mapping("builds", "buildsnapshot")
+  buildsnapshot = mapping["builds"]["mappings"]["buildsnapshot"]
+  props = buildsnapshot["properties"]
+  if "properties" not in props["build"]:
+    props["build"]["properties"] = {}
+  updateMapping(props["build"]["properties"], buildSkeleton)
+  indices.put_mapping(index="builds", doc_type="buildsnapshot",body=mapping["builds"]["mappings"])
+
+@app.route('/update/buildSkeleton', methods=["GET", "HEAD", "OPTIONS", "POST"])
+def updateBuildSkeleton():
+  if request.method != "POST":
+    abort(405)
+
+  h = hmac.new(os.environ['GITHUB_PART_HOOK_HMAC'], request.data, sha1)
+  if not app.debug and not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+    abort(403)
+
+  updateBuildSkeletonHelper()
+  return 'ok'
+
 @app.route('/healthz')
 def healthz():
   return Response(response="ok", content_type="Content-Type: text/plain; charset=utf-8", status=requests.codes.ok)
 
 updatePartCategoriesHelper()
+updateBuildSkeletonHelper()
 updatePartIndexHelper()
 if __name__ == '__main__':
     application.run(debug = True)
