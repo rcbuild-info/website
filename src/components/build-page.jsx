@@ -249,6 +249,29 @@ export default class BuildPage extends React.Component {
                 </Panel>
               </Col>
             </Row>);
+  } else if (this.state.primaryBuild.state === "creating") {
+    return (<Row>
+              <Col md={12}>
+                <PageHeader>{primaryBuildName}</PageHeader>
+              </Col>
+              <Col md={12}>
+                <Panel>
+                  Please sit tight while we create your build.
+                </Panel>
+              </Col>
+            </Row>);
+  } else if (this.state.primaryBuild.state === "create-failed") {
+    return (<Row>
+              <Col md={12}>
+                <PageHeader>{primaryBuildName}</PageHeader>
+              </Col>
+              <Col md={12}>
+                <Panel header="Oh no!">
+                  Looks like we were unable to create your build. Please try again and if it continues to fail please <a href="mailto:scott.shawcroft@gmail.com">email Scott</a>.<hr/>
+                  <Button bsStyle="success" onClick={ this.onCreateBuild }>Try again</Button>
+                </Panel>
+              </Col>
+            </Row>);
   }
     console.log("didn't render anything!");
     return null;

@@ -132,6 +132,7 @@ class BuildStore {
   }
   createBuild(buildVersion) {
     ga("send", "event", "build", "create", buildVersion.user + "/" + buildVersion.branch);
+    this.builds[buildVersion.key].state = "creating";
     this.getInstance().createBuild(buildVersion);
   }
   createdBuild(response) {
@@ -143,9 +144,16 @@ class BuildStore {
       this.primaryBuildVersion.key = this.primaryBuildVersion.key.replace("staged", this.primaryBuildVersion.commit);
     }
     ga("send", "event", "build", "created", buildVersion.user + "/" + buildVersion.branch);
+    this.builds[buildVersion.key].state = "created";
     this.getInstance().loadBuild(this.primaryBuildVersion);
   }
   createBuildFailed(response) {
+    if (response.status === 504 && response.config.attempt < 3) {
+      setTimeout(
+        function() {this.getInstance().createBuild(response.config.buildVersion, response.config.attempt + 1);}.bind(this),
+        Math.pow(2, response.config.attempt) * 1000);
+      return;
+    }
     ga("send", "event", "build", "createFailed", response.config.buildVersion.user + "/" + response.config.buildVersion.branch);
     this.builds[response.config.buildVersion.key].state = "create-failed";
   }

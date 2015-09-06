@@ -76,15 +76,19 @@ export default {
   createBuild() {
     return {
       // remotely fetch something (required)
-      remote(state, buildVersion) {
-        return axios.post("/build/" + buildVersion.user + "/" + buildVersion.branch + ".json", null, {"buildVersion": buildVersion});
+      remote(state, buildVersion, attempt) {
+        if (!attempt) {
+          attempt = 1;
+        }
+        return axios.post("/build/" + buildVersion.user + "/" + buildVersion.branch + ".json", null, {"buildVersion": buildVersion, "attempt": attempt});
       },
 
       // this function checks in our local cache first
       // if the value is present it'll use that instead (optional).
       local(state, buildVersion) {
         if (state.builds[buildVersion.key] &&
-            state.builds[buildVersion.key].state !== "does-not-exist") {
+            state.builds[buildVersion.key].state !== "does-not-exist" &&
+            state.builds[buildVersion.key].state !== "creating") {
           return state.builds[buildVersion.key];
         }
         return null;

@@ -600,7 +600,7 @@ def create_fork_and_branch(user, branch):
   if result.status_code != requests.codes.ok:
     print(572, result.status_code)
     print(573, result.text)
-    return Response(status=requests.codes.server_error)
+    return Response(status=requests.codes.gateway_timeout)
   ref_info = json.loads(result.text)
 
   # Determine the sha of heads/master
