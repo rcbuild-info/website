@@ -11,16 +11,17 @@ export default class CreateBuildPage extends React.Component {
     this.onClick = this.onClick.bind(this);
   }
 
-  onClick() {
+  onClick(event) {
     let branch = this.refs.input.getValue().replace(/[\s/~\.\^:\?\*\[\\]+/g, "-");
     this.context.router.transitionTo("editbuild", {"user": this.props.loggedInUser, "branch": branch });
+    event.preventDefault();
   }
 
   render() {
     var content;
     if (this.props.loggedInUser) {
       let createButton = <Button bsStyle="primary" onClick={this.onClick}>Create</Button>;
-      content = <form><Input buttonAfter={createButton} label="Name your build" placeholder="Build name" ref="input" type="text"/></form>;
+      content = <form onSubmit={this.onClick}><Input buttonAfter={createButton} label="Name your build" placeholder="Build name" ref="input" type="text"/></form>;
     } else {
       content = <div>Oops, you need to be logged into GitHub in order to create a new build. Why? RCBuild.Info uses GitHub to version your data so you can always go back to old settings.<hr/><Button bsStyle="primary" href={"/login?next=" + window.location.href}>Login with GitHub</Button></div>;
     }
