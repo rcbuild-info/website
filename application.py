@@ -20,6 +20,17 @@ import urllib
 import urlparse
 from hashlib import sha1
 
+import collections
+
+def update(d, u):
+    for k, v in u.iteritems():
+        if isinstance(v, collections.Mapping):
+            r = update(d.get(k, {}), v)
+            d[k] = r
+        else:
+            d[k] = u[k]
+    return d
+
 application = app = Flask(__name__)
 sslify = SSLify(app, skips=["healthz"])
 app.config['GITHUB_CLIENT_ID'] = os.environ['GITHUB_CLIENT_ID']
@@ -192,7 +203,8 @@ def updateBuildIndex():
       # We bump the snapshot if settings or parts change but not other things
       # such as flights. Flights will only impact snapshot stats, not structure.
       if (current_snapshot == None or
-          "build.json" in commit["modified"] or
+          ("build.json" in commit["modified"] and
+           commit["message"].strip() != "Silently upgrade build.json.") or
           "cleanflight_cli_dump.txt" in commit["modified"] or
           "cleanflight_gui_backup.txt" in commit["modified"] or
           "cleanflight_cli_dump.txt" in commit["added"] or
@@ -224,7 +236,7 @@ def updateBuildIndex():
         # The id of a snapshot is the last commit so we delete the old current
         # doc when a commit is added and load the previous snapshot so we can
         # update its next.
-        actions.append({"delete": current_doc_id})
+        actions.append({"delete": copy.copy(current_doc_id)})
 
         if "previous_snapshot" in current_snapshot:
           previous_doc_id = {"_index": "builds", "_type": "buildsnapshot", "_id": current_snapshot["previous_snapshot"]}
@@ -699,6 +711,47 @@ def update_build(user, branch):
                "content": new_build_contents}]
   return new_commit(user, branch, new_tree, "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".")
 
+def maybe_upgrade_build(user, branch, build):
+  if "u" not in request.cookies or request.cookies["u"] != user:
+    return build
+  ref = "refs/heads/" + urllib.quote_plus(branch)
+  gh = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
+  new_build = json.loads(gh.get_data(True))
+  commit_build = False
+  if build["version"] < buildSkeleton["version"]:
+    new_build = copy.deepcopy(buildSkeleton)
+    update(new_build, build)
+    # Intentionally update the version.
+    new_build["version"] = buildSkeleton["version"]
+    commit_build = True
+  # Update part ids when in links.
+  for category, partIDs in new_build["config"].iteritems():
+    if isinstance(partIDs, list):
+      for i, partID in enumerate(partIDs):
+        manufacturerID, partID = partID.rsplit("/", 1)
+        while manufacturerID in LINKS and partID in LINKS[manufacturerID]:
+          manufacturerID, partID = LINKS[manufacturerID][partID]
+        partIDs[i] = "/".join((manufacturerID, partID))
+        commit_build = commit_build or new_build["config"][category][i] != build["config"][category][i]
+    elif "/" in partIDs:
+      manufacturerID, partID = partIDs.rsplit("/", 1)
+      while manufacturerID in LINKS and partID in LINKS[manufacturerID]:
+        manufacturerID, partID = LINKS[manufacturerID][partID]
+      new_build["config"][category] = "/".join((manufacturerID, partID))
+      commit_build = commit_build or new_build["config"][category] != build["config"][category]
+
+  if commit_build:
+    new_build_contents = json.dumps(new_build, indent=1, sort_keys=True, separators=(',', ': '))
+    new_tree = [{"path": "build.json",
+                 "mode": "100644",
+                 "type": "blob",
+                 "content": new_build_contents}]
+    c = new_commit(user, branch, new_tree, "Silently upgrade build.json.")
+    if c.status != requests.codes.ok:
+      return build
+  # Update any part IDs that now are links.
+  return new_build
+
 @app.route('/build/<user>/<branch>.json', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def build_json(user, branch):
   if request.method == "GET":
@@ -724,6 +777,8 @@ def build_json(user, branch):
 
     if res["hits"]["total"] == 1:
       build = res["hits"]["hits"][0]["_source"]
+      if "commit" not in request.args or request.args["commit"] == "HEAD":
+        build["build"] = maybe_upgrade_build(user, branch, build["build"])
       r = Response(json.dumps(build))
       return r
 
@@ -746,6 +801,8 @@ def build_json(user, branch):
     latest_commit_sha = branch_info["object"]["sha"]
 
     parts = json.loads(gh.get_data(True))
+    if "commit" not in request.args or request.args["commit"] == "HEAD":
+      parts = maybe_upgrade_build(user, branch, parts)
     build = {"commits": [latest_commit_sha], "build": parts}
     return Response(json.dumps(build))
   elif request.method == "POST":
