@@ -799,7 +799,7 @@ def maybe_upgrade_json(user, branch, build, info):
       commit = True
     elif gh.status_code == requests.codes.ok:
       current_info = json.loads(gh.get_data(True))
-      if "version" not in current_info or ["version"] < infoSkeleton["version"]:
+      if "version" not in current_info or current_info["version"] < infoSkeleton["version"]:
         new_info = copy.deepcopy(infoSkeleton)
         update(new_info, current_info)
         # Intentionally update the version.
@@ -824,7 +824,7 @@ def maybe_upgrade_json(user, branch, build, info):
                        "type": "blob",
                        "content": new_info_contents})
     c = new_commit(user, branch, new_tree, SILENT_COMMIT_MESSAGE)
-    if c.status != requests.codes.ok:
+    if c.status_code != requests.codes.ok:
       return (build, info)
 
     # Our upgrade worked so return the new versions.
