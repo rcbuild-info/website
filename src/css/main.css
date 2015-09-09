@@ -232,14 +232,97 @@ ul {
 
 .build-card {
   cursor: pointer;
-  font-size: 1.1em;
-  text-overflow: ellipsis;
-  overflow-x: hidden;
-  white-space: nowrap;
+  font-size: 1.15em;
 }
 
 .build-card small {
   color: #888888;
+}
+
+.build-card .thumb {
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
+.build-card hr {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.build-card .snippet {
+  padding-top: 15px;
+}
+
+.clipped-image {
+  background-size: cover;
+  background-position: center;
+}
+
+.small-video {
+  width: 33.3333%;
+  display: inline-block;
+  position: relative;
+}
+
+.large-video {
+  position: relative;
+}
+
+.small-video.not-active {
+  -webkit-filter: grayscale(100%);
+  filter: grayscale(100%);
+}
+
+.photo-thumb, #photo-container .more {
+  width: 33.33334%;
+}
+
+.photo-thumb {
+  display: inline-block;
+  position: relative;
+}
+
+.delete {
+  position: absolute;
+  top: 50%;
+  text-align: center;
+  color: red;
+  font-weight: bold;
+  width: 100%;
+  text-anchor: center;
+  visible: hidden;
+}
+
+.maybe-delete .clipped-image, .maybe-delete img {
+    -webkit-filter: grayscale(100%) brightness(25%);
+}
+
+.build-photos .control-label, .build-videos .control-label {
+    padding-left: 0.5em;
+    padding-top: 0.5em;
+}
+
+.build-photos .help-block, .build-videos .help-block {
+    padding-left: 0.5em;
+}
+
+.more {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.more div {
+  margin: auto;
+  font-weight: bolder;
+}
+
+.embed-responsive-1by1 {
+  padding-bottom: 100%;
+}
+
+#photo-container {
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .disclaimer {

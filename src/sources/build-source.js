@@ -64,6 +64,13 @@ export default {
         if (build.dirty.parts) {
           formData.append("build.json", newBuild);
         }
+        if (build.dirty.info) {
+          let newInfo = stringify(build.info, {space: 2});
+          formData.append("info.json", newInfo);
+        }
+        if (formData.length === 0) {
+          return null;
+        }
         return axios.post("/build/" + buildVersion.user + "/" + buildVersion.branch + "/files",
                           formData,
                           {"buildVersion": buildVersion});

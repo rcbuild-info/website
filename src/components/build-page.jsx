@@ -12,6 +12,8 @@ import BuildActions from "../actions/build-actions";
 import BuildParts from "./build-parts";
 import SiteActions from "../actions/site-actions";
 import FlightControllerSettings from "./fc-settings";
+import Photos from "./photos";
+import Videos from "./videos";
 
 import Router from "react-router";
 var Link = Router.Link;
@@ -187,6 +189,17 @@ export default class BuildPage extends React.Component {
                     </Link>
                   </PageHeader>);
       }
+      let multimedia = null;
+      if (!this.state.secondaryBuild) {
+        let photos = [];
+        let videos = [];
+        if (this.state.primaryBuild.info && this.state.primaryBuild.info.media) {
+          photos = this.state.primaryBuild.info.media.photos;
+          videos = this.state.primaryBuild.info.media.videos;
+          multimedia = [(<Photos editing={this.state.editing} fill key="photos" photos={photos}/>),
+                        (<Videos editing={this.state.editing} fill key="videos" videos={videos}/>)];
+        }
+      }
       return (<div>
                 <Row>
                   <Col md={12}>
@@ -203,6 +216,7 @@ export default class BuildPage extends React.Component {
                               secondaryParts={secondaryParts}/>
                 </Col>
                 <Col md={6}>
+                  { multimedia }
                   <FlightControllerSettings editing={this.state.editing}
                                             primaryParts={primaryParts}
                                             primarySettings={this.state.primaryBuild.settings.fc}

@@ -5,6 +5,7 @@ import SiteActions from "../actions/site-actions";
 import BuildSource from "../sources/build-source";
 
 import clone from "clone";
+import _ from "underscore";
 
 import PartStore from "./part-store";
 
@@ -31,8 +32,12 @@ class BuildStore {
       savedBuild: BuildActions.savedBuild,
       saveBuildFailed: BuildActions.saveBuildFailed,
       setBuildPart: BuildActions.setBuildPart,
+      addPhoto: BuildActions.addPhoto,
+      deletePhoto: BuildActions.deletePhoto,
+      addVideo: BuildActions.addVideo,
+      deleteVideo: BuildActions.deleteVideo,
       editBuild: BuildActions.editBuild,
-      discardBuild: BuildActions.editBuild,
+      discardBuild: BuildActions.discardBuild,
       setSettings: BuildActions.setSettings,
       loadedSettings: BuildActions.loadedSettings,
       loadSettingsFailed: BuildActions.loadSettingsFailed,
@@ -89,6 +94,54 @@ class BuildStore {
     build.state = "unsaved";
     build.dirty.parts = true;
   }
+  addPhoto(photo) {
+    let build = this.builds[this.primaryBuildVersion.key];
+    for (let existing of build.info.media.photos) {
+      if (_.isEqual(existing, photo)) {
+        return;
+      }
+    }
+    // By default we have one template entry that we should remove after we add
+    // one entry.
+    if (build.info.media.photos.length === 1 &&
+        (Object.keys(build.info.media.photos[0]) > 1 ||
+         build.info.media.photos[0].imgur.imageId === "")) {
+     build.info.media.photos.pop();
+    }
+    build.info.media.photos.push(photo);
+    build.state = "unsaved";
+    build.dirty.info = true;
+  }
+  deletePhoto(index) {
+    let build = this.builds[this.primaryBuildVersion.key];
+    build.info.media.photos.splice(index, 1);
+    build.state = "unsaved";
+    build.dirty.info = true;
+  }
+  addVideo(video) {
+    let build = this.builds[this.primaryBuildVersion.key];
+    for (let existing of build.info.media.videos) {
+      if (_.isEqual(existing, video)) {
+        return;
+      }
+    }
+    // By default we have one template entry that we should remove after we add
+    // one entry.
+    if (build.info.media.videos.length === 1 &&
+        (Object.keys(build.info.media.videos[0]) > 1 ||
+         build.info.media.videos[0].youtube.videoId === "")) {
+     build.info.media.videos.pop();
+    }
+    build.info.media.videos.push(video);
+    build.state = "unsaved";
+    build.dirty.info = true;
+  }
+  deleteVideo(index) {
+    let build = this.builds[this.primaryBuildVersion.key];
+    build.info.media.videos.splice(index, 1);
+    build.state = "unsaved";
+    build.dirty.info = true;
+  }
   setSettings(settings) {
     let build = this.builds[this.primaryBuildVersion.key];
     if (!build.dirty.settings) {
@@ -100,16 +153,16 @@ class BuildStore {
       build.dirty.settings[key] = true;
     }
   }
+  discardBuild() {
+    delete this.builds[this.primaryBuildVersion];
+    this.primaryBuildVersion = this.savedPrimaryBuildVersion;
+    this.savedPrimaryBuildVersion = null;
+  }
   saveBuild() {
     let stagedKey = this.primaryBuildVersion.key;
     ga("send", "event", "build", "save", stagedKey);
     this.builds[stagedKey].state = "saving";
     this.getInstance().saveBuild(this.primaryBuildVersion, this.builds[stagedKey]);
-  }
-  discardBuild() {
-    delete this.builds[this.primaryBuildVersion];
-    this.primaryBuildVersion = this.savedPrimaryBuildVersion;
-    this.savedPrimaryBuildVersion = null;
   }
   savedBuild(response) {
     let buildVersion = response.config.buildVersion;
@@ -176,6 +229,7 @@ class BuildStore {
         this.builds[buildVersion.key] = clone({
           "state": "exists",
           "dirty": {},
+          "info": response.data.info,
           "parts": response.data.build,
           "settings": {"fc": undefined},
           "similar": {},
@@ -193,6 +247,7 @@ class BuildStore {
     this.builds[buildVersion.key] = {
       "state": "exists",
       "dirty": {},
+      "info": response.data.info,
       "parts": response.data.build,
       "settings": {"fc": undefined},
       "similar": {},

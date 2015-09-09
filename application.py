@@ -46,8 +46,13 @@ f = Fernet(FERNET_KEY)
 
 es = elasticsearch.Elasticsearch([os.environ['ES_HOST']])
 
+SILENT_COMMIT_MESSAGE = "Silently upgrade json version(s)."
+
 partCategories_string = ""
 partCategories = {}
+
+buildSkeleton = {}
+infoSkeleton = {}
 
 github_cache = pylru.lrucache(64)
 
@@ -204,7 +209,7 @@ def updateBuildIndex():
       # such as flights. Flights will only impact snapshot stats, not structure.
       if (current_snapshot == None or
           ("build.json" in commit["modified"] and
-           commit["message"].strip() != "Silently upgrade build.json.") or
+           commit["message"].strip() != SILENT_COMMIT_MESSAGE) or
           "cleanflight_cli_dump.txt" in commit["modified"] or
           "cleanflight_gui_backup.txt" in commit["modified"] or
           "cleanflight_cli_dump.txt" in commit["added"] or
@@ -253,6 +258,11 @@ def updateBuildIndex():
       if previous_snapshot:
         previous_snapshot["next_snapshot"] = commit["id"]
       if current_snapshot:
+        # Update to the latest info.
+        if "info.json" in commit["modified"] or "info.json" in commit["added"]:
+          r = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/contents/info.json?ref=" + commit["id"], headers={"accept": "application/vnd.github.v3.raw"})
+          if r.status_code == requests.codes.ok:
+            current_snapshot["info"] = json.loads(r.text)
         current_snapshot["commits"].append(commit["id"])
         current_snapshot["timestamp"] = commit["timestamp"]
         current_doc_id["_id"] = commit["id"]
@@ -362,6 +372,11 @@ def get_build_snippet(build):
   snippet = {"user" : build["user"],
              "branch" : build["branch"],
              "snippet": part_snippet}
+  if "info" in build and "media" in build["info"]:
+    if len(build["info"]["media"]["photos"]) > 0 and not (len(build["info"]["media"]["photos"]) == 1 and build["info"]["media"]["photos"][0]["imgur"]["imageId"] == ""):
+      snippet["thumb"] = build["info"]["media"]["photos"][-1]
+    elif len(build["info"]["media"]["videos"]) > 0 and not (len(build["info"]["media"]["videos"]) == 1 and build["info"]["media"]["videos"][0]["youtube"]["videoId"] == ""):
+      snippet["thumb"] = build["info"]["media"]["videos"][-1]
   return snippet
 
 @app.route('/list/builds', defaults={"page": 1}, methods=["GET", "HEAD", "OPTIONS", "POST"])
@@ -701,56 +716,120 @@ def new_commit(user, branch, tree, message):
 
   return Response(json.dumps({"commit": new_commit_sha}))
 
-def update_build(user, branch):
-  if int(request.headers["Content-Length"]) > 2048:
-    return Response(status=requests.codes.bad_request)
-  new_build_contents = request.get_data()
-  new_tree = [{"path": "build.json",
-               "mode": "100644",
-               "type": "blob",
-               "content": new_build_contents}]
-  return new_commit(user, branch, new_tree, "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".")
+def part_compare(a, b):
+  a = a[0]
+  b = b[0]
+  categories = partCategories["categories"]
+  if a not in categories or b not in categories:
+    if a not in categories and b not in categories:
+      return cmp(a, b)
+    elif a not in categories:
+      return 1
+    elif b not in categories:
+      return -1
+  return categories[a]["order"] - categories[b]["order"]
 
-def maybe_upgrade_build(user, branch, build):
+def sort_dicts(d):
+  d = collections.OrderedDict(sorted(d.iteritems()))
+  for k in d:
+    if isinstance(d[k], collections.Mapping):
+      d[k] = sort_dicts(d[k])
+    elif isinstance(d[k], collections.Sequence):
+      for i in xrange(len(d[k])):
+        if isinstance(d[k][i], collections.Mapping):
+          d[k][i] = sort_dicts(d[k][i])
+  return d
+
+def maybe_upgrade_json(user, branch, build, info):
   if "u" not in request.cookies or request.cookies["u"] != user:
-    return build
+    return (build, info)
   ref = "refs/heads/" + urllib.quote_plus(branch)
+  commit = False
+
+  # Update the version of build.json.
   gh = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
-  new_build = json.loads(gh.get_data(True))
-  commit_build = False
+  existing_build = json.loads(gh.get_data(True))
+  new_build = None
   if build["version"] < buildSkeleton["version"]:
     new_build = copy.deepcopy(buildSkeleton)
-    update(new_build, build)
+    update(new_build, existing_build)
     # Intentionally update the version.
     new_build["version"] = buildSkeleton["version"]
-    commit_build = True
+    commit = True
+
   # Update part ids when in links.
-  for category, partIDs in new_build["config"].iteritems():
+  temp_build = existing_build
+  if new_build != None:
+    temp_build = new_build
+  part_updated = False
+  for category, partIDs in temp_build["config"].iteritems():
     if isinstance(partIDs, list):
       for i, partID in enumerate(partIDs):
         manufacturerID, partID = partID.rsplit("/", 1)
+        replaced = False
         while manufacturerID in LINKS and partID in LINKS[manufacturerID]:
           manufacturerID, partID = LINKS[manufacturerID][partID]
-        partIDs[i] = "/".join((manufacturerID, partID))
-        commit_build = commit_build or new_build["config"][category][i] != build["config"][category][i]
+          replaced = True
+        if replaced:
+          partIDs[i] = "/".join((manufacturerID, partID))
+          part_updated = True
     elif "/" in partIDs:
       manufacturerID, partID = partIDs.rsplit("/", 1)
+      replaced = False
       while manufacturerID in LINKS and partID in LINKS[manufacturerID]:
         manufacturerID, partID = LINKS[manufacturerID][partID]
-      new_build["config"][category] = "/".join((manufacturerID, partID))
-      commit_build = commit_build or new_build["config"][category] != build["config"][category]
+        replaced = True
+      if replaced:
+        temp_build["config"][category] = "/".join((manufacturerID, partID))
+        part_updated = True
+  if part_updated:
+    new_build = temp_build
+    commit = True
 
-  if commit_build:
-    new_build_contents = json.dumps(new_build, indent=1, sort_keys=True, separators=(',', ': '))
-    new_tree = [{"path": "build.json",
-                 "mode": "100644",
-                 "type": "blob",
-                 "content": new_build_contents}]
-    c = new_commit(user, branch, new_tree, "Silently upgrade build.json.")
+  # Update the info file.
+  if "version" in infoSkeleton:
+    gh = get_github("repos/" + user + "/rcbuild.info-builds/contents/info.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
+    new_info = None
+    if gh.status_code == requests.codes.not_found:
+      new_info = infoSkeleton
+      commit = True
+    elif gh.status_code == requests.codes.ok:
+      current_info = json.loads(gh.get_data(True))
+      if "version" not in current_info or ["version"] < infoSkeleton["version"]:
+        new_info = copy.deepcopy(infoSkeleton)
+        update(new_info, current_info)
+        # Intentionally update the version.
+        new_info["version"] = infoSkeleton["version"]
+        commit = True
+
+  if commit:
+    new_tree = []
+    if new_build != None:
+      # Mimic the sort that the JSON does to minimize diffs on GitHub.
+      build = sort_dicts(build)
+      build["config"] = collections.OrderedDict(sorted(build["config"].iteritems(), cmp=part_compare))
+      new_build_contents = json.dumps(build, indent=2, separators=(',', ': '))
+      new_tree.append({"path": "build.json",
+                       "mode": "100644",
+                       "type": "blob",
+                       "content": new_build_contents})
+    if new_info != None:
+      new_info_contents = json.dumps(new_info, indent=2, sort_keys=True, separators=(',', ': '))
+      new_tree.append({"path": "info.json",
+                       "mode": "100644",
+                       "type": "blob",
+                       "content": new_info_contents})
+    c = new_commit(user, branch, new_tree, SILENT_COMMIT_MESSAGE)
     if c.status != requests.codes.ok:
-      return build
-  # Update any part IDs that now are links.
-  return new_build
+      return (build, info)
+
+    # Our upgrade worked so return the new versions.
+    if new_build != None:
+      build = new_build
+    if new_info != None:
+      info = new_info
+
+  return (build, info)
 
 @app.route('/build/<user>/<branch>.json', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def build_json(user, branch):
@@ -777,8 +856,10 @@ def build_json(user, branch):
 
     if res["hits"]["total"] == 1:
       build = res["hits"]["hits"][0]["_source"]
+      if "info" not in build:
+        build["info"] = None
       if "commit" not in request.args or request.args["commit"] == "HEAD":
-        build["build"] = maybe_upgrade_build(user, branch, build["build"])
+        build["build"], build["info"] = maybe_upgrade_json(user, branch, build["build"], build["info"])
       r = Response(json.dumps(build))
       return r
 
@@ -801,22 +882,29 @@ def build_json(user, branch):
     latest_commit_sha = branch_info["object"]["sha"]
 
     parts = json.loads(gh.get_data(True))
+
+    build = {"commits": [latest_commit_sha], "build": parts, "info": None}
+
+    info = get_github("repos/" + user + "/rcbuild.info-builds/contents/info.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
+    if info.status_code == requests.codes.ok:
+      build["info"] = json.loads(info.get_data(True))
+
     if "commit" not in request.args or request.args["commit"] == "HEAD":
-      parts = maybe_upgrade_build(user, branch, parts)
-    build = {"commits": [latest_commit_sha], "build": parts}
+      build["build"], build["info"] = maybe_upgrade_json(user, branch, build["build"], build["info"])
+
     return Response(json.dumps(build))
   elif request.method == "POST":
     return create_fork_and_branch(user, branch)
 
 @app.route('/build/<user>/<branch>/files', methods=["GET", "HEAD", "OPTIONS", "POST"])
-def setting_upload(user, branch):
+def upload_files(user, branch):
   if request.method != "POST":
     return Response(status=requests.codes.method_not_allowed)
   if int(request.headers["Content-Length"]) > 40*(2**10):
     print("settings too large", request.headers["Content-Length"])
     return Response(status=requests.codes.bad_request)
   new_tree = []
-  for filename in ["cleanflight_cli_dump.txt", "cleanflight_gui_backup.json", "build.json"]:
+  for filename in ["cleanflight_cli_dump.txt", "cleanflight_gui_backup.json", "build.json", "info.json"]:
     content = None
     if filename in request.files:
       content = request.files[filename].read()
@@ -829,6 +917,9 @@ def setting_upload(user, branch):
        "mode": "100644",
        "type": "blob",
        "content": content});
+
+  if len(new_tree) == 0:
+    return Response(status=requests.codes.bad_request)
 
   # TODO(tannewt): Ensure that the file contents are from cleanflight.
   return new_commit(user, branch, new_tree, "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".")
@@ -877,6 +968,10 @@ def updateMapping(mapping, skeleton):
       if key not in mapping:
         mapping[key] = {"properties" : {}, "dynamic": False}
       updateMapping(mapping[key]["properties"], skeleton[key])
+    elif isinstance(skeleton[key], list) and len(skeleton[key]) == 1:
+      if key not in mapping:
+        mapping[key] = {"properties" : {}, "dynamic": False}
+      updateMapping(mapping[key]["properties"], skeleton[key][0])
     elif key in mapping:
       continue
     elif isinstance(skeleton[key], int):
@@ -887,17 +982,28 @@ def updateMapping(mapping, skeleton):
 
 def updateBuildSkeletonHelper():
   global buildSkeleton
+  global infoSkeleton
 
-  resp = get_github("repos/rcbuild-info/rcbuild.info-builds/contents/build.json", {"accept": "application/vnd.github.v3.raw"}, skip_cache=True)
+  build_response = get_github("repos/rcbuild-info/rcbuild.info-builds/contents/build.json", {"accept": "application/vnd.github.v3.raw"}, skip_cache=True)
 
-  buildSkeleton = json.loads(resp.get_data(True))
+  buildSkeleton = json.loads(build_response.get_data(True))
+
+  info_response = get_github("repos/rcbuild-info/rcbuild.info-builds/contents/info.json", {"accept": "application/vnd.github.v3.raw"}, skip_cache=True)
+  if info_response.status_code == requests.codes.ok:
+    infoSkeleton = json.loads(info_response.get_data(True))
+
   indices = elasticsearch.client.IndicesClient(es)
   mapping = indices.get_mapping("builds", "buildsnapshot")
   buildsnapshot = mapping["builds"]["mappings"]["buildsnapshot"]
   props = buildsnapshot["properties"]
   if "properties" not in props["build"]:
     props["build"]["properties"] = {}
+  if "info" not in props:
+    props["info"] = {"properties": {}, "type": "object", "dynamic": False}
+  if "properties" not in props["info"]:
+    props["info"]["properties"] = {}
   updateMapping(props["build"]["properties"], buildSkeleton)
+  updateMapping(props["info"]["properties"], infoSkeleton)
   indices.put_mapping(index="builds", doc_type="buildsnapshot",body=mapping["builds"]["mappings"])
 
 @app.route('/update/buildSkeleton', methods=["GET", "HEAD", "OPTIONS", "POST"])
