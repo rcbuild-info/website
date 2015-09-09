@@ -237,6 +237,8 @@ def updateBuildIndex():
           "commits": [],
           "next_snapshot": None
         }
+        if "info" in previous_snapshot:
+          current_snapshot["info"] = previous_snapshot["info"]
       elif updating:
         # The id of a snapshot is the last commit so we delete the old current
         # doc when a commit is added and load the previous snapshot so we can
