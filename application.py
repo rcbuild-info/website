@@ -765,6 +765,8 @@ def maybe_upgrade_json(user, branch, build, info):
   for category, partIDs in temp_build["config"].iteritems():
     if isinstance(partIDs, list):
       for i, partID in enumerate(partIDs):
+        if "/" not in partID:
+          continue
         manufacturerID, partID = partID.rsplit("/", 1)
         replaced = False
         while manufacturerID in LINKS and partID in LINKS[manufacturerID]:
