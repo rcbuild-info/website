@@ -945,7 +945,7 @@ def build_json(user, branch):
       commit = request.args["commit"]
     build = get_buildsnapshot(user, branch, commit)
     if build == None:
-      return Response(requests.codes.not_found)
+      return Response(status=requests.codes.not_found)
     return Response(json.dumps(build))
   elif request.method == "POST":
     return create_fork_and_branch(user, branch)
