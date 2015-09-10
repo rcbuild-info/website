@@ -262,10 +262,15 @@ ul {
   width: 33.3333%;
   display: inline-block;
   position: relative;
+  cursor: pointer;
 }
 
 .large-video {
   position: relative;
+}
+
+.large-video .clipped-image {
+  cursor: pointer;
 }
 
 .small-video.not-active {
@@ -280,6 +285,7 @@ ul {
 .photo-thumb {
   display: inline-block;
   position: relative;
+  cursor: pointer;
 }
 
 .delete {
