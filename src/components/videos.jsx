@@ -66,8 +66,8 @@ export default class Videos extends React.Component {
                           label="Video Link"
                           onSubmit={this.onAddVideo}
                           placeholder="Example: https://youtu.be/4sh4J0uojMg"
-                          regexes={[new RegExp("youtu\\.be/(\\w+)"),
-                                    new RegExp("youtube\\.com/watch.*(?:&|\\?)v=(\\w+)")]}/>);
+                          regexes={[new RegExp("youtu\\.be/([\\w-]+)"),
+                                    new RegExp("youtube\\.com/watch.*(?:&|\\?)v=([\\w-]+)")]}/>);
     }
     let videos = this.props.videos;
     let largeVideo = null;
