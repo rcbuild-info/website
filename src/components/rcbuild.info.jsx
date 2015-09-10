@@ -132,8 +132,22 @@ export default class RCBuildInfo extends React.Component {
     let share = [];
     if (this.state.page === "build" && this.state.primaryBuildVersion) {
       let version = this.state.primaryBuildVersion;
-      share.push(<MenuItem key="newest" onClick={ this.onShareText.bind(this, "https://rcbuild.info/build/" + version.user + "/" + version.branch + "/") }>Link to newest version</MenuItem>);
-      share.push(<MenuItem key="this" onClick={ this.onShareText.bind(this, "https://rcbuild.info/build/" + version.user + "/" + version.branch + "/" + version.commit.slice(0,8)) }>Link to this version</MenuItem>);
+      let latestUrl = "https://rcbuild.info/build/" + version.user + "/" + version.branch + "/";
+      share.push(<MenuItem key="fb">
+                   <div className="fb-share-button"
+                      data-href={latestUrl}
+                      data-layout="button_count">
+                   </div>
+                 </MenuItem>);
+      share.push(<MenuItem href={"http://www.reddit.com/submit?url=" + encodeURIComponent(latestUrl)} key="reddit">
+                   <span className="reddit_button" style={{"color": "grey"}}>
+                       <img src="//www.redditstatic.com/spreddit5.gif"
+                            style={{"height": "2.3ex", "verticalAlign": "top", "marginRight": "1ex"}}/>submit
+                   </span>
+                 </MenuItem>);
+      share.push(<MenuItem divider key="afterNetworks"/>);
+      share.push(<MenuItem key="newest" onClick={ this.onShareText.bind(this, latestUrl) }>Link to newest version</MenuItem>);
+      share.push(<MenuItem key="this" onClick={ this.onShareText.bind(this, latestUrl + version.commit.slice(0,8)) }>Link to this version</MenuItem>);
       share.push(<MenuItem divider key="d"/>);
       share.push(<li key="text"><input placeholder="Select a link above" readOnly ref="copyText"  type="text" value={this.state.copyText} /></li>);
       let copyText = "Copy";

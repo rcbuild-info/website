@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# product: http://ogp.me/ns/product#">
+    <title>{{ title }}</title>
+    <meta charset="utf-8">
+    <meta property="og:title" content="{{ title }}" />
+    <meta property="og:site_name" content="RCBuild.Info"/>
+    <meta property="og:url" content="{{ url }}" />
+    <meta property="og:description" content="{{ description }}" />
+    <meta property="og:type" content="product" />
+    {% if image != None %}<meta property="og:image" content="{{ image }}" />{% endif %}
+    {% if video != None %}<meta property="og:video" content="{{ video }}" />
+    <meta property="og:video:type" content="text/html">{% endif %}
+    <meta property="fb:admins" content="10719338" />
+    <meta property="fb:app_id" content="1623907041160044" />
+  </head>
+  <body>
+    <h1>{{ title }}</h1>
+    <p>{{ description }}</p>
+    <img src="{{ image }}"/>
+  </body>
+</html>

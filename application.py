@@ -60,6 +60,20 @@ from git import Repo
 
 github = GitHub(app)
 
+SOCIAL_BOTS = ["facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+               "facebookexternalhit/1.1",
+               "Mozilla/5.0 (compatible; redditbot/1.0; +http://www.reddit.com/feedback)",
+               "Twitterbot",
+               "Pinterest",
+               "Google (+https://developers.google.com/+/web/snippet/)",
+               "Mozilla/5.0 (compatible; Google-Structured-Data-Testing-Tool +http://developers.google.com/structured-data/testing-tool/)"]
+
+def is_social_bot():
+  for bot in SOCIAL_BOTS:
+    if bot in request.user_agent.string:
+      return True
+  return False
+
 def CloneOrPull():
   r = None
   if not os.path.isdir("parts-repo"):
@@ -237,7 +251,7 @@ def updateBuildIndex():
           "commits": [],
           "next_snapshot": None
         }
-        if "info" in previous_snapshot:
+        if previous_snapshot and "info" in previous_snapshot:
           current_snapshot["info"] = previous_snapshot["info"]
       elif updating:
         # The id of a snapshot is the last commit so we delete the old current
@@ -454,14 +468,6 @@ def comparebuild(primaryUsername, primaryBranch, secondaryUsername, secondaryBra
 @app.route('/compare/<primaryUsername>/<primaryBranch>/<primaryCommit>/vs/<secondaryUsername>/<secondaryBranch>/<secondaryCommit>')
 def comparebuildcommits(primaryUsername, primaryBranch, primaryCommit, secondaryUsername, secondaryBranch, secondaryCommit):
   return render_template('main.html')
-
-@app.route('/build/<username>/<branch>/<commit>')
-def buildCommit(username, branch, commit):
-    return render_template('main.html')
-
-@app.route('/build/<username>/<branch>/')
-def build(username, branch):
-    return render_template('main.html')
 
 @app.route('/build/<username>/<branch>')
 def oldBuild(username, branch):
@@ -835,67 +841,107 @@ def maybe_upgrade_json(user, branch, build, info):
 
   return (build, info)
 
+def get_buildsnapshot(user, branch, commit=None):
+  searchbody = None
+  if commit:
+    searchbody = {"query":{"bool":{"must":[{"prefix":{"buildsnapshot.commits":commit}}],"must_not":[],"should":[]}},"size":1,"sort":[{"timestamp": {"order": "desc"}}]}
+  else:
+    searchbody = {
+      "query": {
+        "bool": {
+          "must": [
+            {"term":{"buildsnapshot.branch":branch}},
+            {"term":{"buildsnapshot.user":user}},
+            {"constant_score":
+              {"filter":
+                {"missing":
+                  {"field":"buildsnapshot.next_snapshot"}}}}],
+          "must_not":[],
+          "should":[]}},
+      "size":1,
+      "sort":[{"timestamp": {"order": "desc"}}]}
+  res = es.search(index="builds", doc_type="buildsnapshot", body=searchbody)
+
+  if res["hits"]["total"] == 1:
+    build = res["hits"]["hits"][0]["_source"]
+    if "info" not in build:
+      build["info"] = None
+    if "commit" not in request.args or request.args["commit"] == "HEAD":
+      build["build"], build["info"] = maybe_upgrade_json(user, branch, build["build"], build["info"])
+    return build
+
+  # Fallback to looking in github.ref = None
+  ref = None
+  if "commit" in request.args:
+    ref = request.args["commit"]
+  else:
+    ref = "refs/heads/" + urllib.quote_plus(branch)
+  gh = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
+  if gh.status_code != requests.codes.ok:
+    return None
+
+  result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch))
+  if result.status_code != requests.codes.ok:
+    print(727, result.status_code)
+    print(728, result.text)
+    return None
+  branch_info = json.loads(result.text)
+  latest_commit_sha = branch_info["object"]["sha"]
+
+  parts = json.loads(gh.get_data(True))
+
+  build = {"commits": [latest_commit_sha], "build": parts, "info": None, "user": user, "branch": branch}
+
+  info = get_github("repos/" + user + "/rcbuild.info-builds/contents/info.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
+  if info.status_code == requests.codes.ok:
+    build["info"] = json.loads(info.get_data(True))
+
+  if "commit" not in request.args or request.args["commit"] == "HEAD":
+    build["build"], build["info"] = maybe_upgrade_json(user, branch, build["build"], build["info"])
+  return build
+
+def get_social_build_page(user, branch, commit):
+  build = get_buildsnapshot(user, branch, commit)
+  snippet = get_build_snippet(build)
+  url = "https://rcbuild.info/build/" + user + "/" + branch + "/"
+  if commit != None:
+    url += commit
+  video = None
+  image = None
+  if "thumb" in snippet:
+    if "imgur" in snippet["thumb"]:
+      image = "https://i.imgur.com/" + snippet["thumb"]["imgur"]["imageId"] + "." + snippet["thumb"]["imgur"]["extension"]
+    elif "youtube" in snippet["thumb"]:
+      image = "https://img.youtube.com/vi/" + snippet["thumb"]["youtube"]["videoId"] + "/maxresdefault.jpg"
+      video = "https://www.youtube.com/embed/" + snippet["thumb"]["youtube"]["videoId"]
+  return render_template('social.html',
+                         title=(user + "/" + branch),
+                         description=snippet["snippet"],
+                         image=image,
+                         url=url,
+                         video=video)
+
+@app.route('/build/<username>/<branch>/<commit>')
+def buildCommit(username, branch, commit):
+  if is_social_bot():
+    return get_social_build_page(username, branch, commit)
+  return render_template('main.html')
+
+@app.route('/build/<username>/<branch>/')
+def build(username, branch):
+  if is_social_bot():
+    return get_social_build_page(username, branch, None)
+  return render_template('main.html')
+
 @app.route('/build/<user>/<branch>.json', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def build_json(user, branch):
   if request.method == "GET":
-    searchbody = None
+    commit = None
     if "commit" in request.args:
-      searchbody = {"query":{"bool":{"must":[{"prefix":{"buildsnapshot.commits":request.args["commit"]}}],"must_not":[],"should":[]}},"size":1,"sort":[{"timestamp": {"order": "desc"}}]}
-    else:
-      searchbody = {
-        "query": {
-          "bool": {
-            "must": [
-              {"term":{"buildsnapshot.branch":branch}},
-              {"term":{"buildsnapshot.user":user}},
-              {"constant_score":
-                {"filter":
-                  {"missing":
-                    {"field":"buildsnapshot.next_snapshot"}}}}],
-            "must_not":[],
-            "should":[]}},
-        "size":1,
-        "sort":[{"timestamp": {"order": "desc"}}]}
-    res = es.search(index="builds", doc_type="buildsnapshot", body=searchbody)
-
-    if res["hits"]["total"] == 1:
-      build = res["hits"]["hits"][0]["_source"]
-      if "info" not in build:
-        build["info"] = None
-      if "commit" not in request.args or request.args["commit"] == "HEAD":
-        build["build"], build["info"] = maybe_upgrade_json(user, branch, build["build"], build["info"])
-      r = Response(json.dumps(build))
-      return r
-
-    # Fallback to looking in github.ref = None
-    ref = None
-    if "commit" in request.args:
-      ref = request.args["commit"]
-    else:
-      ref = "refs/heads/" + urllib.quote_plus(branch)
-    gh = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
-    if gh.status_code != requests.codes.ok:
-      return Response(status=requests.codes.not_found)
-
-    result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch))
-    if result.status_code != requests.codes.ok:
-      print(727, result.status_code)
-      print(728, result.text)
-      return Response(status=requests.codes.server_error)
-    branch_info = json.loads(result.text)
-    latest_commit_sha = branch_info["object"]["sha"]
-
-    parts = json.loads(gh.get_data(True))
-
-    build = {"commits": [latest_commit_sha], "build": parts, "info": None}
-
-    info = get_github("repos/" + user + "/rcbuild.info-builds/contents/info.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
-    if info.status_code == requests.codes.ok:
-      build["info"] = json.loads(info.get_data(True))
-
-    if "commit" not in request.args or request.args["commit"] == "HEAD":
-      build["build"], build["info"] = maybe_upgrade_json(user, branch, build["build"], build["info"])
-
+      commit = request.args["commit"]
+    build = get_buildsnapshot(user, branch, commit)
+    if build == None:
+      return Response(requests.codes.not_found)
     return Response(json.dumps(build))
   elif request.method == "POST":
     return create_fork_and_branch(user, branch)
