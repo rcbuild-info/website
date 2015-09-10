@@ -8,8 +8,8 @@ module.exports = function(grunt) {
         banner: "/*! <%= pkg.name %> <%= grunt.template.today(\"yyyy-mm-dd\") %> */\n",
         sourceMap: true,
         sourceMapIn: "out/exorcise/<%= pkg.name %>.deps.js.map",
-        mangle: false,
-        beautify: true
+        mangle: true,
+        beautify: false
       },
       build: {
         src: "out/browserify/<%= pkg.name %>.deps.js",
