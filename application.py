@@ -756,7 +756,11 @@ def maybe_upgrade_json(user, branch, build, info):
 
   # Update the version of build.json.
   gh = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
-  existing_build = json.loads(gh.get_data(True))
+  try:
+    existing_build = json.loads(gh.get_data(True))
+  except ValueError:
+    print("Build json parse failed for " + user + "/" + branch + "@" + str(commit) + " status " + str(gh.status_code) + " \"" + gh.get_data(True) + "\"")
+    return (build, info)
   new_build = None
   if build["version"] < buildSkeleton["version"]:
     new_build = copy.deepcopy(buildSkeleton)
