@@ -46,7 +46,7 @@ f = Fernet(FERNET_KEY)
 
 es = elasticsearch.Elasticsearch([os.environ['ES_HOST']])
 
-SILENT_COMMIT_MESSAGE = "Silently upgrade json version(s)."
+SILENT_COMMIT_MESSAGE = "Silently upgrade - "
 
 partCategories_string = ""
 partCategories = {}
@@ -223,7 +223,7 @@ def updateBuildIndex():
       # such as flights. Flights will only impact snapshot stats, not structure.
       if (current_snapshot == None or
           ("build.json" in commit["modified"] and
-           commit["message"].strip() != SILENT_COMMIT_MESSAGE) or
+           not commit["message"].startswith(SILENT_COMMIT_MESSAGE)) or
           "cleanflight_cli_dump.txt" in commit["modified"] or
           "cleanflight_gui_backup.txt" in commit["modified"] or
           "cleanflight_cli_dump.txt" in commit["added"] or
@@ -238,25 +238,14 @@ def updateBuildIndex():
           previous_snapshot["next_snapshot"] = commit["id"]
 
         # Create a new snapshot.
-        r = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + commit["id"], headers={"accept": "application/vnd.github.v3.raw"})
-        if r.status_code != requests.codes.ok:
-          continue
-        build = json.loads(r.text)
         current_snapshot = {
           "timestamp": commit["timestamp"],
           "user": user,
           "branch": branch,
-          "build": build,
           "previous_snapshot": previous_doc_id["_id"],
           "commits": [],
           "next_snapshot": None
         }
-        if previous_snapshot and "info" in previous_snapshot:
-          current_snapshot["info"] = previous_snapshot["info"]
-        else:
-          r = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/contents/info.json?ref=" + commit["id"], headers={"accept": "application/vnd.github.v3.raw"})
-          if r.status_code == requests.codes.ok:
-            build["info"] = json.loads(r.text)
       elif updating:
         # The id of a snapshot is the last commit so we delete the old current
         # doc when a commit is added and load the previous snapshot so we can
@@ -278,13 +267,18 @@ def updateBuildIndex():
       if previous_snapshot:
         previous_snapshot["next_snapshot"] = commit["id"]
       if current_snapshot:
+        if "build" not in current_snapshot or "build.json" in commit["modified"] or "build.json" in commit["added"]:
+          r = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + commit["id"], headers={"accept": "application/vnd.github.v3.raw"})
+          if r.status_code == requests.codes.ok:
+            current_snapshot["build"] = json.loads(r.text)
         # Update to the latest info.
-        if "info.json" in commit["modified"] or "info.json" in commit["added"]:
+        if "info" not in current_snapshot or "info.json" in commit["modified"] or "info.json" in commit["added"]:
           r = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/contents/info.json?ref=" + commit["id"], headers={"accept": "application/vnd.github.v3.raw"})
           if r.status_code == requests.codes.ok:
             current_snapshot["info"] = json.loads(r.text)
         current_snapshot["commits"].append(commit["id"])
-        current_snapshot["timestamp"] = commit["timestamp"]
+        if not commit["message"].startswith(SILENT_COMMIT_MESSAGE):
+          current_snapshot["timestamp"] = commit["timestamp"]
         current_doc_id["_id"] = commit["id"]
       updating = False
 
@@ -766,12 +760,14 @@ def maybe_upgrade_json(user, branch, build, info):
     print("Build json parse failed for " + user + "/" + branch + "@" + str(commit) + " status " + str(gh.status_code) + " \"" + gh.get_data(True) + "\"")
     return (build, info)
   new_build = None
+  messages = []
   if build["version"] < buildSkeleton["version"]:
     new_build = copy.deepcopy(buildSkeleton)
     update(new_build, existing_build)
     # Intentionally update the version.
     new_build["version"] = buildSkeleton["version"]
     commit = True
+    messages.append("Build file version.")
 
   # Update part ids when in links.
   temp_build = existing_build
@@ -803,6 +799,7 @@ def maybe_upgrade_json(user, branch, build, info):
   if part_updated:
     new_build = temp_build
     commit = True
+    messages.append("Part IDs.")
 
   # Update the info file.
   if "version" in infoSkeleton:
@@ -811,6 +808,7 @@ def maybe_upgrade_json(user, branch, build, info):
     if gh.status_code == requests.codes.not_found:
       new_info = infoSkeleton
       commit = True
+      messages.append("Add info file.")
     elif gh.status_code == requests.codes.ok:
       current_info = json.loads(gh.get_data(True))
       if "version" not in current_info or current_info["version"] < infoSkeleton["version"]:
@@ -819,14 +817,15 @@ def maybe_upgrade_json(user, branch, build, info):
         # Intentionally update the version.
         new_info["version"] = infoSkeleton["version"]
         commit = True
+        messages.append("Upgrade info file version.")
 
   if commit:
     new_tree = []
     if new_build != None:
       # Mimic the sort that the JSON does to minimize diffs on GitHub.
-      build = sort_dicts(build)
-      build["config"] = collections.OrderedDict(sorted(build["config"].iteritems(), cmp=part_compare))
-      new_build_contents = json.dumps(build, indent=2, separators=(',', ': '))
+      new_build = sort_dicts(new_build)
+      new_build["config"] = collections.OrderedDict(sorted(new_build["config"].iteritems(), cmp=part_compare))
+      new_build_contents = json.dumps(new_build, indent=2, separators=(',', ': '))
       new_tree.append({"path": "build.json",
                        "mode": "100644",
                        "type": "blob",
@@ -837,7 +836,8 @@ def maybe_upgrade_json(user, branch, build, info):
                        "mode": "100644",
                        "type": "blob",
                        "content": new_info_contents})
-    c = new_commit(user, branch, new_tree, SILENT_COMMIT_MESSAGE)
+
+    c = new_commit(user, branch, new_tree, SILENT_COMMIT_MESSAGE + " ".join(messages))
     if c.status_code != requests.codes.ok:
       return (build, info)
 
