@@ -754,6 +754,7 @@ def maybe_upgrade_json(user, branch, build, info):
 
   # Update the version of build.json.
   gh = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
+  existing_build = None
   try:
     existing_build = json.loads(gh.get_data(True))
   except ValueError:
@@ -761,7 +762,7 @@ def maybe_upgrade_json(user, branch, build, info):
     return (build, info)
   new_build = None
   messages = []
-  if build["version"] < buildSkeleton["version"]:
+  if existing_build["version"] < buildSkeleton["version"]:
     new_build = copy.deepcopy(buildSkeleton)
     update(new_build, existing_build)
     # Intentionally update the version.
