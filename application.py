@@ -253,6 +253,10 @@ def updateBuildIndex():
         }
         if previous_snapshot and "info" in previous_snapshot:
           current_snapshot["info"] = previous_snapshot["info"]
+        else:
+          r = github.raw_request("GET", "repos/" + user + "/rcbuild.info-builds/contents/info.json?ref=" + commit["id"], headers={"accept": "application/vnd.github.v3.raw"})
+          if r.status_code == requests.codes.ok:
+            build["info"] = json.loads(r.text)
       elif updating:
         # The id of a snapshot is the last commit so we delete the old current
         # doc when a commit is added and load the previous snapshot so we can
