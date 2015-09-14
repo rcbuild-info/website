@@ -182,9 +182,11 @@ def updateBuildIndex():
 
     res = es.get(index='private', doc_type='githubsecret', id=user)
     if not res["found"]:
+      print("couldn't find github secret")
       abort(403)
     h = hmac.new(str(res["_source"]["secret"]), request.data, sha1)
     if not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+      print("couldn't verify hmac")
       abort(403)
 
     branch = push_info["ref"][len("refs/heads/"):]
@@ -305,7 +307,7 @@ def similar_builds(user, branch):
   if "commit" in request.args:
     ref = request.args["commit"]
   else:
-    ref = "refs/heads/" + urllib.quote_plus(branch)
+    ref = "refs/heads/" + urllib.quote_plus(branch.encode('utf8'))
   build = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"}, use_cache_even_when_logged_in=True)
   if build.status_code != requests.codes.ok:
     return Response(status=requests.codes.server_error)
@@ -666,7 +668,7 @@ def create_fork_and_branch(user, branch):
 
 def new_commit(user, branch, tree, message):
   # Get the sha of the current commit at head.
-  result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch))
+  result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch.encode('utf8')))
   if result.status_code != requests.codes.ok:
     print(608, result.status_code)
     print(609, result.text)
@@ -711,7 +713,7 @@ def new_commit(user, branch, tree, message):
   new_commit_sha = new_commit_info["sha"]
 
   result = github.raw_request("POST",
-                              "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch),
+                              "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch.encode('utf8')),
                               data=json.dumps(
                                 {"sha": new_commit_sha}),
                               headers={"Content-Type": "application/json"})
@@ -749,7 +751,7 @@ def sort_dicts(d):
 def maybe_upgrade_json(user, branch, build, info):
   if "u" not in request.cookies or request.cookies["u"] != user:
     return (build, info)
-  ref = "refs/heads/" + urllib.quote_plus(branch)
+  ref = "refs/heads/" + urllib.quote_plus(branch.encode('utf8'))
   commit = False
 
   # Update the version of build.json.
@@ -884,12 +886,12 @@ def get_buildsnapshot(user, branch, commit=None):
   if "commit" in request.args:
     ref = request.args["commit"]
   else:
-    ref = "refs/heads/" + urllib.quote_plus(branch)
+    ref = "refs/heads/" + urllib.quote_plus(branch.encode('utf8'))
   gh = get_github("repos/" + user + "/rcbuild.info-builds/contents/build.json?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
   if gh.status_code != requests.codes.ok:
     return None
 
-  result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch))
+  result = github.raw_request("GET",  "repos/" + user + "/rcbuild.info-builds/git/refs/heads/" + urllib.quote_plus(branch.encode('utf8')))
   if result.status_code != requests.codes.ok:
     print(727, result.status_code)
     print(728, result.text)
@@ -989,7 +991,7 @@ def config_json(user, branch, filename):
   if "commit" in request.args:
     ref = request.args["commit"]
   else:
-    ref = "refs/heads/" + urllib.quote_plus(branch)
+    ref = "refs/heads/" + urllib.quote_plus(branch.encode('utf8'))
   return get_github("repos/" + user + "/rcbuild.info-builds/contents/" + filename + "?ref=" + ref, {"accept": "application/vnd.github.v3.raw"})
 
 def updatePartCategoriesHelper():
