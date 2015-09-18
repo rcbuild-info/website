@@ -26,7 +26,7 @@ export default class Videos extends React.Component {
   }
 
   static trackVideo(action, videoId) {
-    ga("send", "event", "photo", action, videoId);
+    ga("send", "event", "video", action, videoId);
   }
 
   onClickVideo(index) {
