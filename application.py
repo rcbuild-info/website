@@ -31,15 +31,37 @@ def update(d, u):
             d[k] = u[k]
     return d
 
-application = app = Flask(__name__)
-sslify = SSLify(app, skips=["healthz"])
-app.config['GITHUB_CLIENT_ID'] = os.environ['GITHUB_CLIENT_ID']
-app.config['GITHUB_CLIENT_SECRET'] = os.environ['GITHUB_CLIENT_SECRET']
-app.config['GITHUB_BASE_URL'] = os.environ['GITHUB_BASE_URL']
-app.config['GITHUB_AUTH_URL'] = os.environ['GITHUB_AUTH_URL']
-app.config['PROPAGATE_EXCEPTIONS'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = 365 * 24 * 60 * 60
-app.secret_key = os.environ['SESSION_SECRET_KEY']
+class DomainDispatcher(object):
+    def __init__(self, default, mapping):
+        self.default = default
+        self.mapping = mapping
+
+    def __call__(self, environ, start_response):
+        host = environ['HTTP_HOST'].split(':')[0]
+        app = self.default
+        if host in self.mapping:
+          app = self.mapping[host]
+        return app(environ, start_response)
+
+# Init the rcbuild.info app.
+rcbuild = Flask(__name__)
+sslify = SSLify(rcbuild, skips=["healthz"])
+rcbuild.config['GITHUB_CLIENT_ID'] = os.environ['GITHUB_CLIENT_ID']
+rcbuild.config['GITHUB_CLIENT_SECRET'] = os.environ['GITHUB_CLIENT_SECRET']
+rcbuild.config['GITHUB_BASE_URL'] = os.environ['GITHUB_BASE_URL']
+rcbuild.config['GITHUB_AUTH_URL'] = os.environ['GITHUB_AUTH_URL']
+rcbuild.config['PROPAGATE_EXCEPTIONS'] = True
+rcbuild.config['PERMANENT_SESSION_LIFETIME'] = 365 * 24 * 60 * 60
+rcbuild.secret_key = os.environ['SESSION_SECRET_KEY']
+
+# Init the rcpart.info app.
+rcpart = Flask(__name__)
+rcpart_sslify = SSLify(rcpart, skips=["healthz"])
+
+application = DomainDispatcher(rcbuild, {"rcbuild.info": rcbuild,
+                                         "rcbuild.local": rcbuild,
+                                         "rcpart.info": rcpart,
+                                         "rcpart.local": rcpart})
 
 FERNET_KEY = os.environ['FERNET_KEY']
 f = Fernet(FERNET_KEY)
@@ -58,7 +80,7 @@ github_cache = pylru.lrucache(64)
 
 from git import Repo
 
-github = GitHub(app)
+github = GitHub(rcbuild)
 
 SOCIAL_BOTS = ["facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
                "facebookexternalhit/1.1",
@@ -136,7 +158,7 @@ def updatePartIndexHelper():
   PARTS_BY_ID = new_parts_by_id
   LINKS = new_links
 
-@app.route('/update/partIndex', methods=["GET", "HEAD", "OPTIONS", "POST"])
+@rcbuild.route('/update/partIndex', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def updatePartIndex():
   # Don't update if we can't validate the requester.
   if request.method == "GET":
@@ -150,7 +172,7 @@ def updatePartIndex():
   updatePartIndexHelper()
   return 'ok'
 
-@app.route('/partIndex/by/<by>.json')
+@rcbuild.route('/partIndex/by/<by>.json')
 def partIndex(by):
   if by == "category":
     return Response(json.dumps(SMALL_PARTS_BY_CATEGORY),
@@ -160,15 +182,15 @@ def partIndex(by):
                     content_type="application/json")
   abort(404)
 
-@app.route('/parts/<classification>')
+@rcbuild.route('/parts/<classification>')
 def parts(classification):
     return render_template('main.html')
 
-@app.route('/')
+@rcbuild.route('/')
 def index():
     return render_template('main.html')
 
-@app.route('/update/buildIndex', methods=["GET", "HEAD", "OPTIONS", "POST"])
+@rcbuild.route('/update/buildIndex', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def updateBuildIndex():
   # Don't update if we can't validate the requester.
   if request.method == "POST":
@@ -301,7 +323,7 @@ def filtered_shoulds(f, shoulds, size=5, sort=None, from_=0):
     query["sort"] = sort
   return query
 
-@app.route('/similar/builds/<user>/<branch>')
+@rcbuild.route('/similar/builds/<user>/<branch>')
 def similar_builds(user, branch):
   ref = None
   if "commit" in request.args:
@@ -395,8 +417,8 @@ def get_build_snippet(build):
       snippet["thumb"] = build["info"]["media"]["videos"][-1]
   return snippet
 
-@app.route('/list/builds', defaults={"page": 1}, methods=["GET", "HEAD", "OPTIONS", "POST"])
-@app.route('/list/builds/<page>', methods=["GET", "HEAD", "OPTIONS", "POST"])
+@rcbuild.route('/list/builds', defaults={"page": 1}, methods=["GET", "HEAD", "OPTIONS", "POST"])
+@rcbuild.route('/list/builds/<page>', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def list_builds(page):
   if request.method != "POST":
     return Response(status=requests.codes.method_not_allowed)
@@ -449,27 +471,27 @@ def list_builds(page):
     response["others"].append(get_build_snippet(hit["_source"]))
   return Response(json.dumps(response))
 
-@app.route('/builds')
+@rcbuild.route('/builds')
 def builds():
     return render_template('main.html')
 
-@app.route('/createbuild')
+@rcbuild.route('/createbuild')
 def createbuild():
   return render_template('main.html')
 
-@app.route('/edit/<username>/<repo>')
+@rcbuild.route('/edit/<username>/<repo>')
 def editbuild(username, repo):
   return render_template('main.html')
 
-@app.route('/compare/<primaryUsername>/<primaryBranch>/vs/<secondaryUsername>/<secondaryBranch>')
+@rcbuild.route('/compare/<primaryUsername>/<primaryBranch>/vs/<secondaryUsername>/<secondaryBranch>')
 def comparebuild(primaryUsername, primaryBranch, secondaryUsername, secondaryBranch):
   return render_template('main.html')
 
-@app.route('/compare/<primaryUsername>/<primaryBranch>/<primaryCommit>/vs/<secondaryUsername>/<secondaryBranch>/<secondaryCommit>')
+@rcbuild.route('/compare/<primaryUsername>/<primaryBranch>/<primaryCommit>/vs/<secondaryUsername>/<secondaryBranch>/<secondaryCommit>')
 def comparebuildcommits(primaryUsername, primaryBranch, primaryCommit, secondaryUsername, secondaryBranch, secondaryCommit):
   return render_template('main.html')
 
-@app.route('/build/<username>/<branch>')
+@rcbuild.route('/build/<username>/<branch>')
 def oldBuild(username, branch):
     return redirect("/build/" + username + "/" + branch + "/")
 
@@ -522,11 +544,11 @@ def set_login_info(response, oauth_token):
   user_info = get_github("user", {})
   user_info = json.loads(user_info.get_data(True))
   # Insecure cookie is OK when testing
-  secure = not app.debug
+  secure = not rcbuild.debug
   response.set_cookie('u', user_info["login"], max_age=365 * 24 * 60 * 60, secure=secure)
   return response
 
-@app.route('/login')
+@rcbuild.route('/login')
 def login():
   if "TEST_GITHUB_TOKEN" in os.environ:
     next_url = request.args.get('next') or url_for('index')
@@ -534,11 +556,11 @@ def login():
     r = set_login_info(r, os.environ["TEST_GITHUB_TOKEN"])
     return r
   server = "https://rcbuild.info"
-  if app.debug:
-    server = "http://127.0.0.1:5000"
+  if rcbuild.debug:
+    server = "http://rcbuild.local:5000"
   return github.authorize(scope="public_repo", redirect_uri=server + url_for('authorized') + "?next=" + request.args.get('next'))
 
-@app.route('/logout')
+@rcbuild.route('/logout')
 def logout():
     session.pop('o', None)
     r = redirect(request.args.get('next') or url_for('index'))
@@ -547,7 +569,7 @@ def logout():
     r.set_cookie('u', '', max_age=0, secure=secure)
     return r
 
-@app.route('/github-callback')
+@rcbuild.route('/github-callback')
 @github.authorized_handler
 def authorized(oauth_token):
     next_url = request.args.get('next') or url_for('index')
@@ -577,11 +599,11 @@ def part_helper(manufacturerID, partID):
     return json.dumps(PARTS_BY_ID[manufacturerID][partID])
   abort(404)
 
-@app.route('/part/<manufacturerID>/<partID>.json')
+@rcbuild.route('/part/<manufacturerID>/<partID>.json')
 def part_json(manufacturerID, partID):
   return part_helper(manufacturerID, partID)
 
-@app.route('/part/UnknownManufacturer/<siteID>/<partID>.json')
+@rcbuild.route('/part/UnknownManufacturer/<siteID>/<partID>.json')
 def unknown_part_json(siteID, partID):
   return part_helper("UnknownManufacturer/" + siteID, partID)
 
@@ -600,8 +622,8 @@ def create_fork_and_branch(user, branch):
   all_hooks = json.loads(result.text)
   hook_exists = False
   domain = "https://rcbuild.info"
-  if app.debug:
-    domain = "http://127.0.0.1:5000"
+  if rcbuild.debug:
+    domain = "http://rcbuild.local:5000"
   hook_url = domain + "/update/buildIndex"
   for hook in all_hooks:
     if hook["config"]["url"] == hook_url:
@@ -932,19 +954,19 @@ def get_social_build_page(user, branch, commit):
                          url=url,
                          video=video)
 
-@app.route('/build/<username>/<branch>/<commit>')
+@rcbuild.route('/build/<username>/<branch>/<commit>')
 def buildCommit(username, branch, commit):
   if is_social_bot():
     return get_social_build_page(username, branch, commit)
   return render_template('main.html')
 
-@app.route('/build/<username>/<branch>/')
+@rcbuild.route('/build/<username>/<branch>/')
 def build(username, branch):
   if is_social_bot():
     return get_social_build_page(username, branch, None)
   return render_template('main.html')
 
-@app.route('/build/<user>/<branch>.json', methods=["GET", "HEAD", "OPTIONS", "POST"])
+@rcbuild.route('/build/<user>/<branch>.json', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def build_json(user, branch):
   if request.method == "GET":
     commit = None
@@ -957,7 +979,7 @@ def build_json(user, branch):
   elif request.method == "POST":
     return create_fork_and_branch(user, branch)
 
-@app.route('/build/<user>/<branch>/files', methods=["GET", "HEAD", "OPTIONS", "POST"])
+@rcbuild.route('/build/<user>/<branch>/files', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def upload_files(user, branch):
   if request.method != "POST":
     return Response(status=requests.codes.method_not_allowed)
@@ -985,7 +1007,7 @@ def upload_files(user, branch):
   # TODO(tannewt): Ensure that the file contents are from cleanflight.
   return new_commit(user, branch, new_tree, "Build update via https://rcbuild.info/build/" + user + "/" + branch + ".")
 
-@app.route('/file/<user>/<branch>/<filename>')
+@rcbuild.route('/file/<user>/<branch>/<filename>')
 def config_json(user, branch, filename):
   ref = None
   if "commit" in request.args:
@@ -1007,19 +1029,19 @@ def updatePartCategoriesHelper():
     return
   partCategories_string = resp.get_data(True)
 
-@app.route('/update/partCategories', methods=["GET", "HEAD", "OPTIONS", "POST"])
+@rcbuild.route('/update/partCategories', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def updatePartCategories():
   if request.method != "POST":
     abort(405)
 
   h = hmac.new(os.environ['GITHUB_PART_HOOK_HMAC'], request.data, sha1)
-  if not app.debug and not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+  if not rcbuild.debug and not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
     abort(403)
 
   updatePartCategoriesHelper()
   return 'ok'
 
-@app.route('/partCategories.json')
+@rcbuild.route('/partCategories.json')
 def part_categories():
     return Response(partCategories_string)
 
@@ -1067,25 +1089,41 @@ def updateBuildSkeletonHelper():
   updateMapping(props["info"]["properties"], infoSkeleton)
   indices.put_mapping(index="builds", doc_type="buildsnapshot",body=mapping["builds"]["mappings"])
 
-@app.route('/update/buildSkeleton', methods=["GET", "HEAD", "OPTIONS", "POST"])
+@rcbuild.route('/update/buildSkeleton', methods=["GET", "HEAD", "OPTIONS", "POST"])
 def updateBuildSkeleton():
   if request.method != "POST":
     abort(405)
 
   h = hmac.new(os.environ['GITHUB_PART_HOOK_HMAC'], request.data, sha1)
-  if not app.debug and not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
+  if not rcbuild.debug and not hmac.compare_digest(request.headers["X-Hub-Signature"], u"sha1=" + h.hexdigest()):
     abort(403)
 
   updateBuildSkeletonHelper()
   return 'ok'
 
-@app.route('/healthz')
+@rcbuild.route('/healthz')
 def healthz():
   return Response(response="ok", content_type="Content-Type: text/plain; charset=utf-8", status=requests.codes.ok)
+
+@rcpart.route('/')
+def rcpart_home():
+  return "hello rcpart world"
+
+@rcpart.route('/part/<manufacturerID>/<partID>')
+def part(manufacturerID, partID):
+  return part_helper(manufacturerID, partID)
+
+@rcpart.route('/part/UnknownManufacturer/<siteID>/<partID>')
+def unknown_part(siteID, partID):
+  return part_helper("UnknownManufacturer/" + siteID, partID)
 
 updatePartCategoriesHelper()
 updateBuildSkeletonHelper()
 updatePartIndexHelper()
 if __name__ == '__main__':
-    application.run(debug = True)
-    #application.run(host='0.0.0.0')
+  application.debug = True
+  rcbuild.debug = True
+  rcpart.debug = True
+  from werkzeug.serving import run_simple
+  run_simple('127.0.0.1', 5000, application,
+             use_reloader=True, use_debugger=True, use_evalex=True)
