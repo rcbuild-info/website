@@ -1,12 +1,10 @@
 import React from "react";
 
 import RCBuildInfo from "./components/rcbuild.info.jsx";
-import AllParts from "./components/all-parts";
 import BuildPage from "./components/build-page";
 import BuildList from "./components/build-list";
 import HomePage from "./components/home-page";
 import CreateBuildPage from "./components/create-build-page";
-import SupportedParts from "./components/supported-parts";
 
 import SiteActions from "./actions/site-actions";
 
@@ -24,8 +22,6 @@ var routes = (
     <Route handler={BuildPage} name="editbuild" path="edit/:user/:branch" />
     <Route handler={BuildPage} name="compare" path="/compare/:primaryUser/:primaryBranch/:primaryCommit/vs/:secondaryUser/:secondaryBranch/:secondaryCommit" />
     <Redirect from="/compare/:primaryUser/:primaryBranch/vs/:secondaryUser/:secondaryBranch" to="compare" />
-    <Route handler={SupportedParts} name="supportedparts" path="parts/supported" />
-    <Route handler={AllParts} name="allparts" path="parts/all" />
   </Route>);
 
 Router.run(routes, Router.HistoryLocation, (Root, state) => {

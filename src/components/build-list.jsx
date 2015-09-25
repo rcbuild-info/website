@@ -61,20 +61,20 @@ export default class BuildList extends React.Component {
   }
 
   static sortByPartCategoryThenFullName(a, b) {
-    if (a.category === b.category) {
+    if (a.categories[0] === b.categories[0]) {
       if (a.fullName < b.fullName) {
         return -1;
       } else if (a.fullName > b.fullName) {
         return 1;
       }
       return 0;
-    } else if (b.category === "") {
+    } else if (b.categories.length === 0) {
       return -1;
-    } else if (a.category === "") {
+    } else if (a.categories.length === 0) {
       return 1;
-    } else if (a.category < b.category) {
+    } else if (a.categories[0] < b.categories[0]) {
       return -1;
-    } else if (a.category > b.category) {
+    } else if (a.categories[0] > b.categories[0]) {
       return 1;
     }
     return 0;
@@ -84,6 +84,9 @@ export default class BuildList extends React.Component {
     let partList = [];
     if (state.shortPartsByID) {
       for (let partID of Object.keys(state.shortPartsByID)) {
+        if (state.shortPartsByID[partID].link) {
+          continue;
+        }
         partList.push(state.shortPartsByID[partID]);
       }
     }

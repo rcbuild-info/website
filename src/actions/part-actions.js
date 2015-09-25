@@ -5,8 +5,7 @@ class PartActions {
     this.generateActions("loadCategories", "loadedCategories", "loadCategoriesFailed",
                          "loadIndices",
                          "loadedSupportedPartIndex", "loadSupportedPartIndexFailed",
-                         "loadedUnsupportedPartIndex", "loadUnsupportedPartIndexFailed",
-                         "loadPart", "loadedPart", "loadPartFailed");
+                         "loadedUnsupportedPartIndex", "loadUnsupportedPartIndexFailed");
   }
 }
 

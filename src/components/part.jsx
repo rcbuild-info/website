@@ -2,10 +2,9 @@ import React from "react";
 import Row from "react-bootstrap/lib/Row";
 import Col from "react-bootstrap/lib/Col";
 import Collapse from "react-bootstrap/lib/Collapse";
+import Glyphicon from "react-bootstrap/lib/Glyphicon";
 
 import classNames from "classnames";
-
-import PartDetails from "./part-details";
 
 export default class Part extends React.Component {
   constructor(props) {
@@ -14,21 +13,28 @@ export default class Part extends React.Component {
     if (!Array.isArray(parts)) {
       parts = [parts];
     }
-    let expanded = {};
-    for (let part of parts) {
-      expanded[part] = false;
-    }
-    this.state = {
-      expanded: expanded
-    };
   }
 
-  onHandleToggle(partID, e) {
-    ga("send", "event", "part", "toggle", partID);
-    e.preventDefault();
-    let expanded = this.state.expanded;
-    expanded[partID] = !expanded[partID];
-    this.setState({expanded: expanded});
+  static trackOutboundLink(url, redirect) {
+    ga("send", "event", "outbound", "click", url, {"hitCallback":
+      function () {
+        if (redirect) {
+          document.location = url;
+        }
+      }
+    });
+  }
+
+  onClick(url, event) {
+    let redirect = !event.ctrlKey && !event.metaKey && event.nativeEvent.button === 0;
+    Part.trackOutboundLink(url, redirect);
+    if (redirect) {
+      if (event.preventDefault) {
+        event.preventDefault();
+      } else {
+        event.returnValue = !1;
+      }
+    }
   }
 
   createPartRow(part, diff, first) {
@@ -38,19 +44,17 @@ export default class Part extends React.Component {
     }
     var partInfo = (<Col className="name" xs={8}>{part}{unknown}</Col>);
     let partDetails = null;
-    if (this.props.partStore.parts &&
-        this.props.partStore.parts[part]) {
-      partDetails = this.props.partStore.parts[part];
-      partInfo = (<Col className="name" xs={8}>{partDetails.manufacturer} {partDetails.name}</Col>);
+    if (this.props.partStore.shortPartsByID &&
+        this.props.partStore.shortPartsByID[part]) {
+      partDetails = this.props.partStore.shortPartsByID[part];
+      let url = "https://rcpart.info/part/" + part;
+      partInfo = (<Col className="name" xs={8}>{partDetails.manufacturer} {partDetails.name} <a href={url} onClick={ this.onClick.bind(this, url) }><Glyphicon glyph="shopping-cart" /></a></Col>);
     }
     return (<div className={ classNames(diff, {"additional": !first}) } key={part}>
-              <Row className="row-eq-height" onClick={this.onHandleToggle.bind(this, part)} ref={part}>
+              <Row className="row-eq-height" ref={part}>
                 <Col className="category" xs={4}>{ first ? this.props.model.name : ""}</Col>
                 {partInfo}
               </Row>
-              <Collapse in={this.state.expanded[part]}>
-                <div><PartDetails partInfo={partDetails}/></div>
-              </Collapse>
             </div>);
   }
 

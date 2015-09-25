@@ -70,17 +70,6 @@ class BuildStore {
       this.getInstance().loadBuild(this.secondaryBuildVersion);
     }
   }
-  loadParts(parts) {
-    if (Array.isArray(parts)) {
-      for (let part of parts) {
-        if (part !== "") {
-          PartStore.loadPart(part);
-        }
-      }
-    } else if (parts !== ""){
-      PartStore.loadPart(parts);
-    }
-  }
   editBuild() {
     this.savedPrimaryBuildVersion = clone(this.primaryBuildVersion);
     this.primaryBuildVersion.commit = "staged";
@@ -90,7 +79,6 @@ class BuildStore {
   setBuildPart(change) {
     let build = this.builds[this.primaryBuildVersion.key];
     build.parts.config[change.category] = change.partIDs;
-    this.loadParts(change.partIDs);
     build.state = "unsaved";
     build.dirty.parts = true;
   }
@@ -261,10 +249,6 @@ class BuildStore {
       }
     }
 
-    let config = response.data.build.config;
-    for (let category of Object.keys(config)) {
-      this.loadParts(config[category]);
-    }
     this.getInstance().loadSettingsFile({"path": ["fc", "cf_cli"],
                                          "buildVersion": buildVersion},
                                         "cleanflight_cli_dump.txt");

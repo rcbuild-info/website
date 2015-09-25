@@ -31,17 +31,6 @@ def update(d, u):
             d[k] = u[k]
     return d
 
-class DomainDispatcher(object):
-    def __init__(self, default, mapping):
-        self.default = default
-        self.mapping = mapping
-
-    def __call__(self, environ, start_response):
-        host = environ['HTTP_HOST'].split(':')[0]
-        app = self.default
-        if host in self.mapping:
-          app = self.mapping[host]
-        return app(environ, start_response)
 
 # Init the rcbuild.info app.
 rcbuild = Flask(__name__)
@@ -53,15 +42,7 @@ rcbuild.config['GITHUB_AUTH_URL'] = os.environ['GITHUB_AUTH_URL']
 rcbuild.config['PROPAGATE_EXCEPTIONS'] = True
 rcbuild.config['PERMANENT_SESSION_LIFETIME'] = 365 * 24 * 60 * 60
 rcbuild.secret_key = os.environ['SESSION_SECRET_KEY']
-
-# Init the rcpart.info app.
-rcpart = Flask(__name__)
-rcpart_sslify = SSLify(rcpart, skips=["healthz"])
-
-application = DomainDispatcher(rcbuild, {"rcbuild.info": rcbuild,
-                                         "rcbuild.local": rcbuild,
-                                         "rcpart.info": rcpart,
-                                         "rcpart.local": rcpart})
+application = rcbuild
 
 FERNET_KEY = os.environ['FERNET_KEY']
 f = Fernet(FERNET_KEY)
@@ -104,7 +85,6 @@ def CloneOrPull():
     r = Repo("parts-repo")
   fetch_info = r.remote().pull()
 
-PARTS_BY_ID = {}
 SMALL_PARTS_BY_ID = {}
 SMALL_PARTS_BY_CATEGORY = {}
 LINKS = {}
@@ -116,7 +96,6 @@ def addPart(dest, manufacturerID, partID, part):
 
 def updatePartIndexHelper():
   CloneOrPull()
-  new_parts_by_id = {}
   new_small_parts_by_id = {}
   new_small_parts_by_category = {}
   new_links = {}
@@ -127,35 +106,43 @@ def updatePartIndexHelper():
         continue
       partID = filename[:-len(".json")]
       full_path = os.path.join(dirpath, filename)
+      link = False
       if os.path.islink(full_path):
-        target = os.readlink(full_path)
-        split = target.split("/")
-        m = manufacturerID
-        p = target
+        link = True
+        full_path = os.path.realpath(full_path)
+
+        if not os.path.isfile(full_path):
+          continue
+
+        split = full_path.split("/")
         if len(split) == 2:
-          m, p = split
-        addPart(new_links, manufacturerID, partID, (m, p[:-len(".json")]))
-        continue
+          m = split[-2]
+          p = split[-1][:-len(".json")]
+          addPart(new_links, manufacturerID, partID, (m, p[:-len(".json")]))
+
       with open(full_path, "r") as f:
         part = json.load(f)
         part["id"] = manufacturerID + "/" + partID
         small_part = {"manufacturer": part["manufacturer"],
-                      "name": part["name"],
-                      "category": part["category"]}
-        if part["category"]:
-          c = part["category"]
-          if c not in new_small_parts_by_category:
-            new_small_parts_by_category[c] = {}
-          addPart(new_small_parts_by_category[c], manufacturerID, partID, small_part)
+                      "name": part["name"]}
+        if link:
+          small_part["link"] = True
+        categories = []
+        if "version" in part:
+          categories = part["categories"]
+        elif part["category"]:
+          categories = [part["category"]]
+        small_part["categories"] = categories
+        for category in categories:
+          if category not in new_small_parts_by_category:
+            new_small_parts_by_category[category] = {}
+          addPart(new_small_parts_by_category[category], manufacturerID, partID, small_part)
         addPart(new_small_parts_by_id, manufacturerID, partID, small_part)
-        addPart(new_parts_by_id, manufacturerID, partID, part)
   global SMALL_PARTS_BY_CATEGORY
   global SMALL_PARTS_BY_ID
-  global PARTS_BY_ID
   global LINKS
   SMALL_PARTS_BY_CATEGORY = new_small_parts_by_category
   SMALL_PARTS_BY_ID = new_small_parts_by_id
-  PARTS_BY_ID = new_parts_by_id
   LINKS = new_links
 
 @rcbuild.route('/update/partIndex', methods=["GET", "HEAD", "OPTIONS", "POST"])
@@ -181,10 +168,6 @@ def partIndex(by):
     return Response(json.dumps(SMALL_PARTS_BY_ID),
                     content_type="application/json")
   abort(404)
-
-@rcbuild.route('/parts/<classification>')
-def parts(classification):
-    return render_template('main.html')
 
 @rcbuild.route('/')
 def index():
@@ -393,8 +376,8 @@ def get_part(partID):
     manufacturerID = LINKS[manufacturerID][partID][0]
     partID = LINKS[manufacturerID][partID][1]
 
-  if manufacturerID in PARTS_BY_ID and partID in PARTS_BY_ID[manufacturerID]:
-    return PARTS_BY_ID[manufacturerID][partID]
+  if manufacturerID in SMALL_PARTS_BY_ID and partID in SMALL_PARTS_BY_ID[manufacturerID]:
+    return SMALL_PARTS_BY_ID[manufacturerID][partID]
   return None
 
 def get_part_name(partID):
@@ -427,17 +410,13 @@ def list_builds(page):
   shoulds = []
   for partID in partIDs:
     part = get_part(partID)
-    category = part["category"]
-    if category == "":
-      for c in partCategories["categories"]:
-        term = {c: {"value": partID}}
-        if "similarBoost" in partCategories["categories"][c]:
-          term[c]["boost"] = partCategories["categories"][c]["similarBoost"]
-        shoulds.append({"term": term})
-    else:
-      term = {category: {"value": partID}}
-      if category in partCategories["categories"] and "similarBoost" in partCategories["categories"][category]:
-        term[category]["boost"] = partCategories["categories"][category]["similarBoost"]
+    categories = part["categories"]
+    if len(categories) == 0:
+      categories = partCategories["categories"]
+    for c in categories:
+      term = {c: {"value": partID}}
+      if "similarBoost" in partCategories["categories"][c]:
+        term[c]["boost"] = partCategories["categories"][c]["similarBoost"]
       shoulds.append({"term": term})
 
   page = int(page)
@@ -588,24 +567,6 @@ def token_getter():
   if "o" in session:
     return f.decrypt(session["o"])
   return None
-
-def part_helper(manufacturerID, partID):
-  if manufacturerID in LINKS and partID in LINKS[manufacturerID]:
-    url = '/part/' + "/".join(LINKS[manufacturerID][partID]) + ".json"
-    if not application.debug:
-      url = urlparse.urljoin("https://rcbuild.info", url)
-    return redirect(url)
-  if manufacturerID in PARTS_BY_ID and partID in PARTS_BY_ID[manufacturerID]:
-    return json.dumps(PARTS_BY_ID[manufacturerID][partID])
-  abort(404)
-
-@rcbuild.route('/part/<manufacturerID>/<partID>.json')
-def part_json(manufacturerID, partID):
-  return part_helper(manufacturerID, partID)
-
-@rcbuild.route('/part/UnknownManufacturer/<siteID>/<partID>.json')
-def unknown_part_json(siteID, partID):
-  return part_helper("UnknownManufacturer/" + siteID, partID)
 
 def create_fork_and_branch(user, branch):
   # Create a fork of our base repo or get info on one that already exists.
@@ -1105,25 +1066,11 @@ def updateBuildSkeleton():
 def healthz():
   return Response(response="ok", content_type="Content-Type: text/plain; charset=utf-8", status=requests.codes.ok)
 
-@rcpart.route('/')
-def rcpart_home():
-  return "hello rcpart world"
-
-@rcpart.route('/part/<manufacturerID>/<partID>')
-def part(manufacturerID, partID):
-  return part_helper(manufacturerID, partID)
-
-@rcpart.route('/part/UnknownManufacturer/<siteID>/<partID>')
-def unknown_part(siteID, partID):
-  return part_helper("UnknownManufacturer/" + siteID, partID)
-
 updatePartCategoriesHelper()
 updateBuildSkeletonHelper()
 updatePartIndexHelper()
 if __name__ == '__main__':
   application.debug = True
-  rcbuild.debug = True
-  rcpart.debug = True
   from werkzeug.serving import run_simple
-  run_simple('127.0.0.1', 5000, application,
+  run_simple('127.0.0.1', 5001, application,
              use_reloader=True, use_debugger=True, use_evalex=True)

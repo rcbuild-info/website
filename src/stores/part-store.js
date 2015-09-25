@@ -12,7 +12,6 @@ class PartStore {
     });
 
     this.categories = null;
-    this.parts = {};
 
     this.supportedParts = {};
     this.unsupportedParts = {};
@@ -23,8 +22,6 @@ class PartStore {
       handleNavigateToPage: SiteActions.navigateToPage,
       handleLoadedCategories: PartActions.loadedCategories,
       handleLoadCategoriesFailed: PartActions.loadCategoriesFailed,
-      handleLoadedPart: PartActions.loadedPart,
-      handleLoadPartFailed: PartActions.loadPartFailed,
       handleLoadedSupportedPartIndex: PartActions.loadedSupportedPartIndex,
       handleLoadSupportedPartIndexFailed: PartActions.loadSupportedPartIndexFailed,
       handleLoadedUnsupportedPartIndex: PartActions.loadedUnsupportedPartIndex,
@@ -38,9 +35,7 @@ class PartStore {
     if (page === "build" || page === "editbuild" || page === "compare") {
       this.getInstance().loadCategories();
     }
-    if (page === "editbuild" || page === "builds") {
-      this.getInstance().loadSupportedPartIndex();
-    }
+    this.getInstance().loadSupportedPartIndex();
   }
 
   static expandParts(parts) {
@@ -57,7 +52,18 @@ class PartStore {
     for (let manufacturerID of Object.keys(parts)) {
       for (let partID of Object.keys(parts[manufacturerID])) {
         let part = parts[manufacturerID][partID];
-        if (part.category !== "") {
+        if (part.categories.length > 0) {
+          delete parts[manufacturerID][partID];
+        }
+      }
+    }
+  }
+
+  static filterOutLinks(parts) {
+    for (let manufacturerID of Object.keys(parts)) {
+      for (let partID of Object.keys(parts[manufacturerID])) {
+        let part = parts[manufacturerID][partID];
+        if (part.link) {
           delete parts[manufacturerID][partID];
         }
       }
@@ -78,6 +84,7 @@ class PartStore {
     for(let category of Object.keys(parts)) {
       PartStore.expandParts(parts[category]);
       this.addToShortPartIndex(parts[category]);
+      PartStore.filterOutLinks(parts[category]);
     }
     this.supportedParts = parts;
     this.getInstance().loadUnsupportedPartIndex();
@@ -90,6 +97,7 @@ class PartStore {
     PartStore.filterOutSupportedParts(unsupportedParts);
     PartStore.expandParts(unsupportedParts);
     this.addToShortPartIndex(unsupportedParts);
+    PartStore.filterOutLinks(unsupportedParts);
     this.unsupportedParts = unsupportedParts;
   }
   handleLoadUnsupportedPartIndexFailed(response) {

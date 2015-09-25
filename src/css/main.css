@@ -13,10 +13,6 @@ body {
 }
 
 .part .name {
-  cursor: pointer;
-}
-
-.part .name {
   text-overflow: ellipsis;
   overflow-x: hidden;
   white-space: nowrap;
@@ -29,6 +25,10 @@ body {
 
 .part .diff-new .name {
   color: green;
+}
+
+.part .glyphicon {
+  color: #bbbbbb;
 }
 
 .value .diff-positive {
@@ -55,7 +55,6 @@ body {
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .part .name, .part .category, .partEntry .category {
