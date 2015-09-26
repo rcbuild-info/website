@@ -16,6 +16,7 @@ body {
   text-overflow: ellipsis;
   overflow-x: hidden;
   white-space: nowrap;
+  flex-grow: 1;
 }
 
 .part .diff-gone .name, .value .diff-gone {
@@ -57,7 +58,11 @@ body {
   white-space: nowrap;
 }
 
-.part .name, .part .category, .partEntry .category {
+.part .name-container {
+  display: flex;
+}
+
+.part .name-container, .part .category, .partEntry .category {
   padding-top: 0.5em;
   padding-bottom: 0.5em;
 }

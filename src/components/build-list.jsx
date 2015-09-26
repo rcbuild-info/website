@@ -157,7 +157,7 @@ export default class BuildList extends React.Component {
       }
       if ("others" in this.state.buildList) {
         for (let build of this.state.buildList.others) {
-          otherBuilds.push((<BuildCard build={build} key={ "o" + build.user + build.branch } showUser={true}/>));
+          otherBuilds.push((<BuildCard build={build} key={ "o" + build.user + build.branch } showUser/>));
         }
       }
       pagination = (<div className="text-center"><Pagination

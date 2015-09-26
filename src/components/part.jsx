@@ -38,17 +38,15 @@ export default class Part extends React.Component {
   }
 
   createPartRow(part, diff, first) {
-    var unknown = "";
-    if (part.unknown) {
-      unknown = (<a className="unknown" href="https://github.com/rcbuild-info/part-skeleton" target="_blank" title="This part is unknown. Click for more information on how to add it." >?</a>);
-    }
-    var partInfo = (<Col className="name" xs={8}>{part}{unknown}</Col>);
-    let partDetails = null;
+    let partInfo = null;
     if (this.props.partStore.shortPartsByID &&
         this.props.partStore.shortPartsByID[part]) {
-      partDetails = this.props.partStore.shortPartsByID[part];
+      let partDetails = this.props.partStore.shortPartsByID[part];
       let url = "https://rcpart.info/part/" + part;
-      partInfo = (<Col className="name" xs={8}>{partDetails.manufacturer} {partDetails.name} <a href={url} onClick={ this.onClick.bind(this, url) }><Glyphicon glyph="shopping-cart" /></a></Col>);
+      partInfo = (<Col className="name-container" xs={8}><div className="name">{partDetails.manufacturer} {partDetails.name}</div><a href={url} onClick={ this.onClick.bind(this, url) }><Glyphicon glyph="shopping-cart" /></a></Col>);
+    } else {
+      let unknown = (<a href="https://github.com/rcbuild-info/part-skeleton" target="_blank" title="This part is unknown. Click for more information on how to add it." ><Glyphicon glyph="question-sign"/></a>);
+      partInfo = (<Col className="name-container" xs={8}><div className="name">{part}</div>{unknown}</Col>);
     }
     return (<div className={ classNames(diff, {"additional": !first}) } key={part}>
               <Row className="row-eq-height" ref={part}>
